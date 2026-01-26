@@ -222,7 +222,7 @@ export const usePOSSettingsStore = defineStore("posSettings", () => {
 
 	// Resource
 	const settingsResource = createResource({
-		url: "pos_next.pos_next.doctype.pos_settings.pos_settings.get_pos_settings",
+		url: "pos_itqan.pos_itqan.doctype.pos_settings.pos_settings.get_pos_settings",
 		onSuccess(data) {
 			if (data) {
 				Object.assign(settings.value, data)

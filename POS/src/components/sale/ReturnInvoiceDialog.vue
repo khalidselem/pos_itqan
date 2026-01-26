@@ -789,7 +789,7 @@ const returnExpiredDialog = reactive({
 
 // Resource for loading recent invoices (only those with items available for return)
 const loadInvoicesResource = createResource({
-	url: "pos_next.api.invoices.get_returnable_invoices",
+	url: "pos_itqan.api.invoices.get_returnable_invoices",
 	makeParams() {
 		return {
 			limit: 50,
@@ -810,7 +810,7 @@ const loadInvoicesResource = createResource({
 
 // Resource for searching a specific invoice by number (searches entire database)
 const searchInvoiceByNumberResource = createResource({
-	url: "pos_next.api.invoices.search_invoice_by_number",
+	url: "pos_itqan.api.invoices.search_invoice_by_number",
 	auto: false,
 	onSuccess(data) {
 		if (data && data.length > 0) {
@@ -854,7 +854,7 @@ const loadPaymentMethodsResource = createResource({
 // with all child tables (sales_team, taxes, etc.) copied from the original invoice.
 // This ensures sales commissions are correctly reversed when processing returns.
 const fetchInvoiceResource = createResource({
-	url: "pos_next.api.invoices.prepare_return_invoice",
+	url: "pos_itqan.api.invoices.prepare_return_invoice",
 	auto: false,
 	onSuccess(data) {
 		if (data) {
@@ -939,7 +939,7 @@ const fetchInvoiceResource = createResource({
 
 // Resource for submitting the return invoice to the server
 const createReturnResource = createResource({
-	url: "pos_next.api.invoices.submit_invoice",
+	url: "pos_itqan.api.invoices.submit_invoice",
 	makeParams() {
 		// Use the prepared return document as the base.
 		// This document was created by ERPNext's make_sales_return() and contains
@@ -1275,7 +1275,7 @@ function initializePaymentsFromInvoice() {
 
 // Resource for checking invoice return validity (defined early for use in helpers)
 const checkInvoiceValidityResource = createResource({
-	url: "pos_next.api.invoices.check_invoice_return_validity",
+	url: "pos_itqan.api.invoices.check_invoice_return_validity",
 	auto: false,
 })
 

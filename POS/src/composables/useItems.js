@@ -12,7 +12,7 @@ export function useItems(posProfile, cartItems = ref([])) {
 
 	// Resources (kept for server-side refresh when online)
 	const itemsResource = createResource({
-		url: "pos_next.api.items.get_items",
+		url: "pos_itqan.api.items.get_items",
 		makeParams() {
 			return {
 				pos_profile: toValue(posProfile),
@@ -33,7 +33,7 @@ export function useItems(posProfile, cartItems = ref([])) {
 	})
 
 	const itemGroupsResource = createResource({
-		url: "pos_next.api.items.get_item_groups",
+		url: "pos_itqan.api.items.get_item_groups",
 		makeParams() {
 			return {
 				pos_profile: toValue(posProfile),
@@ -50,7 +50,7 @@ export function useItems(posProfile, cartItems = ref([])) {
 	})
 
 	const searchByBarcodeResource = createResource({
-		url: "pos_next.api.items.search_by_barcode",
+		url: "pos_itqan.api.items.search_by_barcode",
 		auto: false,
 	})
 

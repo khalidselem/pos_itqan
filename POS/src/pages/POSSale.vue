@@ -1073,7 +1073,7 @@ const isStockSyncActive = ref(false);
 const warehousesList = ref([]);
 
 const warehousesResource = createResource({
-	url: "pos_next.api.pos_profile.get_warehouses",
+	url: "pos_itqan.api.pos_profile.get_warehouses",
 	makeParams() {
 		return {
 			pos_profile: shiftStore.profileName,
@@ -2526,8 +2526,8 @@ async function loadInvoiceHistoryData() {
 	}
 
 	try {
-		// Use custom API from pos_next.api.invoices
-		const result = await call("pos_next.api.invoices.get_invoices", {
+		// Use custom API from pos_itqan.api.invoices
+		const result = await call("pos_itqan.api.invoices.get_invoices", {
 			pos_profile: shiftStore.profileName,
 			limit: 100,
 		});

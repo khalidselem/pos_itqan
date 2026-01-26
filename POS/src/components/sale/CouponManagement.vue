@@ -671,7 +671,7 @@ const customerOptions = computed(() => {
 
 // Resources
 const couponsResource = createResource({
-	url: "pos_next.api.promotions.get_coupons",
+	url: "pos_itqan.api.promotions.get_coupons",
 	makeParams() {
 		return {
 			company: props.company,
@@ -690,7 +690,7 @@ const couponsResource = createResource({
 })
 
 const couponDetailsResource = createResource({
-	url: "pos_next.api.promotions.get_coupon_details",
+	url: "pos_itqan.api.promotions.get_coupon_details",
 	makeParams() {
 		return { coupon_name: selectedCoupon.value?.name }
 	},
@@ -723,7 +723,7 @@ const campaignsResource = createResource({
 })
 
 const createCouponResource = createResource({
-	url: "pos_next.api.promotions.create_coupon",
+	url: "pos_itqan.api.promotions.create_coupon",
 	makeParams() {
 		return { data: JSON.stringify(form.value) }
 	},
@@ -743,7 +743,7 @@ const createCouponResource = createResource({
 })
 
 const updateCouponResource = createResource({
-	url: "pos_next.api.promotions.update_coupon",
+	url: "pos_itqan.api.promotions.update_coupon",
 	makeParams() {
 		return {
 			coupon_name: selectedCoupon.value?.name,
@@ -777,7 +777,7 @@ const updateCouponResource = createResource({
 })
 
 const toggleCouponResource = createResource({
-	url: "pos_next.api.promotions.toggle_coupon",
+	url: "pos_itqan.api.promotions.toggle_coupon",
 	makeParams() {
 		return { coupon_name: selectedCoupon.value?.name }
 	},
@@ -799,7 +799,7 @@ const toggleCouponResource = createResource({
 })
 
 const deleteCouponResource = createResource({
-	url: "pos_next.api.promotions.delete_coupon",
+	url: "pos_itqan.api.promotions.delete_coupon",
 	makeParams() {
 		return { coupon_name: selectedCoupon.value?.name }
 	},

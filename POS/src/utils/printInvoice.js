@@ -489,7 +489,7 @@ export async function printInvoiceByName(
 ) {
 	try {
 		// Fetch the invoice document using proper POS API endpoint
-		const invoiceDoc = await call("pos_next.api.invoices.get_invoice", {
+		const invoiceDoc = await call("pos_itqan.api.invoices.get_invoice", {
 			invoice_name: invoiceName,
 		})
 

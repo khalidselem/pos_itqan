@@ -263,7 +263,7 @@ const {
 } = useShift()
 
 const ping = createResource({
-	url: "pos_next.api.ping",
+	url: "pos_itqan.api.ping",
 	auto: false,
 })
 
