@@ -89,7 +89,7 @@ function verify_master_key(frm) {
 	}
 
 	frappe.call({
-		method: 'pos_itqan.pos_itqan.doctype.brainwise_branding.brainwise_branding.verify_master_key',
+		method: 'pos_itqan.pos_itqan.doctype.itqan_branding.itqan_branding.verify_master_key',
 		args: {
 			master_key_input: frm.doc.master_key_provided
 		},
