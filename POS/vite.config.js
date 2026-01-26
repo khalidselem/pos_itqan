@@ -19,7 +19,7 @@ function posNextBuildVersionPlugin(version) {
 		name: "pos-next-build-version",
 		apply: "build",
 		async writeBundle() {
-			const versionFile = path.resolve(__dirname, "../pos_next/public/pos/version.json")
+			const versionFile = path.resolve(__dirname, "../pos_itqan/public/pos/version.json")
 			await fs.mkdir(path.dirname(versionFile), { recursive: true })
 			await fs.writeFile(
 				versionFile,
@@ -52,8 +52,8 @@ export default defineConfig({
 			jinjaBootData: true,
 			lucideIcons: true,
 			buildConfig: {
-				indexHtmlPath: "../pos_next/www/pos.html",
-				outDir: "../pos_next/public/pos",
+				indexHtmlPath: "../pos_itqan/www/pos.html",
+				outDir: "../pos_itqan/public/pos",
 				emptyOutDir: true,
 				sourcemap: enableSourceMap,
 			},
@@ -78,29 +78,29 @@ export default defineConfig({
 				theme_color: "#4F46E5",
 				background_color: "#ffffff",
 				display: "standalone",
-				scope: "/assets/pos_next/pos/",
+				scope: "/assets/pos_itqan/pos/",
 				start_url: "/pos",
 				icons: [
 					{
-						src: "/assets/pos_next/pos/icon.svg",
+						src: "/assets/pos_itqan/pos/icon.svg",
 						sizes: "192x192",
 						type: "image/svg+xml",
 						purpose: "any",
 					},
 					{
-						src: "/assets/pos_next/pos/icon.svg",
+						src: "/assets/pos_itqan/pos/icon.svg",
 						sizes: "512x512",
 						type: "image/svg+xml",
 						purpose: "any",
 					},
 					{
-						src: "/assets/pos_next/pos/icon-maskable.svg",
+						src: "/assets/pos_itqan/pos/icon-maskable.svg",
 						sizes: "192x192",
 						type: "image/svg+xml",
 						purpose: "maskable",
 					},
 					{
-						src: "/assets/pos_next/pos/icon-maskable.svg",
+						src: "/assets/pos_itqan/pos/icon-maskable.svg",
 						sizes: "512x512",
 						type: "image/svg+xml",
 						purpose: "maskable",
@@ -142,7 +142,7 @@ export default defineConfig({
 						},
 					},
 					{
-						urlPattern: /\/assets\/pos_next\/pos\/.*/i,
+						urlPattern: /\/assets\/pos_itqan\/pos\/.*/i,
 						handler: "CacheFirst",
 						options: {
 							cacheName: "pos-assets-cache",
@@ -208,7 +208,7 @@ export default defineConfig({
 	],
 	build: {
 		chunkSizeWarningLimit: 1500,
-		outDir: "../pos_next/public/pos",
+		outDir: "../pos_itqan/public/pos",
 		emptyOutDir: true,
 		target: "es2015",
 		sourcemap: enableSourceMap,
