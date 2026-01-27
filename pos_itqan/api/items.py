@@ -300,6 +300,17 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 
 	res["item_uoms"] = uoms
 
+
+
+	# Add Cut Types
+	cut_types = frappe.get_all(
+		"Item Cut Type",
+		filters={"parent": item_code},
+		fields=["cut_type"],
+		order_by="idx"
+	)
+	res["cut_types"] = [row.cut_type for row in cut_types]
+
 	return res
 
 
