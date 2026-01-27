@@ -44,7 +44,7 @@
 		"workbox-build": "^7.3.0",
 		"workbox-window": "^7.3.0"
 	},
-	"resolutions": {
+	"overrides": {
 		"@iconify/utils": "2.1.22"
 	}
 }
