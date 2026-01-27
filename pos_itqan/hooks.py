@@ -100,7 +100,10 @@ fixtures = [
 					"POS Profile-posa_cash_mode_of_payment",
 					"POS Profile-posa_allow_delete",
 					"POS Profile-posa_block_sale_beyond_available_qty",
-					"Mode of Payment-is_wallet_payment"
+					"POS Profile-posa_block_sale_beyond_available_qty",
+					"Mode of Payment-is_wallet_payment",
+					"Item-cut_types",
+					"Sales Invoice Item-custom_cut_type"
 				]
 			]
 		]

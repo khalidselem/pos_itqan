@@ -1078,6 +1078,18 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 				if row.uom:
 					conversion_map[row.parent][row.uom] = row.conversion_factor
 
+		# Fetch Item Cut Types (bulk query)
+		cut_types_map = defaultdict(list)
+		if item_codes:
+			cut_types = frappe.get_all(
+				"Item Cut Type",
+				filters={"parent": ["in", item_codes]},
+				fields=["parent", "cut_type"],
+				order_by="idx"
+			)
+			for row in cut_types:
+				cut_types_map[row.parent].append(row.cut_type)
+
 		# UOM-specific prices - batch query ALL prices for all items using Query Builder
 		if item_codes:
 			ItemPrice = DocType("Item Price")
@@ -1271,6 +1283,9 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 
 			# UOM-specific prices map for frontend selector
 			item["uom_prices"] = uom_prices_map.get(item["item_code"], {})
+
+			# Add Cut Types
+			item["cut_types"] = cut_types_map.get(item["item_code"], [])
 
 		# Apply resolved barcode data (weighted/priced) to the first matching item
 		if resolved_barcode_data and items:

@@ -164,6 +164,12 @@
 														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Warehouse') }}</label>
 														<SelectInput v-model="localWarehouse" :options="warehouseOptions" @change="handleWarehouseChange" />
 													</div>
+
+													<!-- Cut Type Selector -->
+													<div v-if="cutTypeOptions.length > 0">
+														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Cut Type') }}</label>
+														<SelectInput v-model="localCutType" :options="cutTypeOptions" />
+													</div>
 												</div>
 											</div>
 
@@ -312,6 +318,7 @@ const localQuantity = ref(1)
 const localUom = ref("")
 const localRate = ref(0)
 const localWarehouse = ref("")
+const localCutType = ref("")
 const discountType = ref("percentage")
 const discountValue = ref(0)
 const calculatedSubtotal = ref(0)
@@ -364,6 +371,14 @@ const discountTypeOptions = computed(() => [
 	{ value: 'amount', label: __('Amount') }
 ])
 
+const cutTypeOptions = computed(() => {
+	if (!localItem.value || !localItem.value.cut_types || localItem.value.cut_types.length === 0) return []
+	return localItem.value.cut_types.map(ct => ({
+		value: ct,
+		label: ct
+	}))
+})
+
 // Initialize local state when item changes
 watch(
 	() => props.item,
@@ -375,6 +390,7 @@ watch(
 			localRate.value = newItem.rate || 0
 			localWarehouse.value =
 				newItem.warehouse || props.warehouses[0]?.name || ""
+			localCutType.value = newItem.custom_cut_type || ""
 
 			// Initialize serial numbers
 			if (newItem.has_serial_no && newItem.serial_no) {
@@ -588,6 +604,7 @@ function updateItem() {
 		uom: localUom.value,
 		rate: localRate.value,
 		warehouse: localWarehouse.value,
+		custom_cut_type: localCutType.value,
 		discount_percentage:
 			discountType.value === "percentage" ? discountValue.value : 0,
 		discount_amount:
