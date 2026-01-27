@@ -123,7 +123,14 @@
 
 													<!-- Rate -->
 													<div>
-														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Rate') }}</label>
+														<div class="flex items-center mb-2">
+															<label
+																for="rate"
+																class="block text-sm font-medium text-gray-700 text-start"
+															>
+																{{ __("Rate") }}
+															</label>
+														</div>
 														<div class="relative h-7">
 															<span class="absolute inset-y-0 start-0 ps-3 flex items-center text-gray-500 text-sm font-medium">
 																{{ currencySymbol }}
