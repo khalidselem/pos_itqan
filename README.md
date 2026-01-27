@@ -1,4 +1,4 @@
-# POS Next
+# POS ITQAN
 
 <div align="center">
 
