@@ -1,5 +1,5 @@
 /**
- * POS Next - Application Entry Point
+ * POS ITQAN - Application Entry Point
  *
  * Initialization sequence:
  * 1. Register PWA service worker
@@ -182,7 +182,7 @@ async function initializeApp() {
 					log.debug("Bootstrap preload failed (non-critical)", error)
 				})
 			})
-			.catch(() => {})
+			.catch(() => { })
 	}
 
 	// -------------------------------------------------------------------------

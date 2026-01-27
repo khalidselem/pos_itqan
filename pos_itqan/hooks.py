@@ -17,7 +17,7 @@ app_license = "agpl-3.0"
 # 	{
 # 		"name": "pos_itqan",
 # 		"logo": "/assets/pos_itqan/logo.png",
-# 		"title": "POS Next",
+# 		"title": "POS ITQAN",
 # 		"route": "/pos_itqan",
 # 		"has_permission": "pos_itqan.api.permission.has_app_permission"
 # 	}
@@ -112,7 +112,7 @@ fixtures = [
 				"name",
 				"in",
 				[
-					"POS Next Receipt"
+					"POS ITQAN Receipt"
 				]
 			]
 		]

@@ -1,5 +1,5 @@
 """
-Barcode resolver service for POS Next.
+Barcode resolver service for POS ITQAN.
 
 This module provides an optional integration with the barcode_resolver app.
 When barcode_resolver is installed, it enables advanced barcode parsing

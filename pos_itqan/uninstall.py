@@ -1,5 +1,5 @@
 """
-Uninstallation hooks for POS Next
+Uninstallation hooks for POS ITQAN
 """
 import frappe
 import logging
@@ -14,7 +14,7 @@ def before_uninstall():
 	Cleans up custom fields, print formats, and configurations
 	"""
 	try:
-		log_message("Starting POS Next uninstallation", level="info")
+		log_message("Starting POS ITQAN uninstallation", level="info")
 
 		# Remove custom fields
 		remove_custom_fields()
@@ -28,22 +28,22 @@ def before_uninstall():
 		# Commit all changes
 		frappe.db.commit()
 
-		log_message("POS Next uninstalled successfully", level="success")
+		log_message("POS ITQAN uninstalled successfully", level="success")
 		log_message("All custom fields and configurations have been removed", level="info")
 
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(
-			title="POS Next Uninstallation Error",
+			title="POS ITQAN Uninstallation Error",
 			message=frappe.get_traceback()
 		)
-		log_message(f"Error during POS Next uninstallation: {str(e)}", level="error")
+		log_message(f"Error during POS ITQAN uninstallation: {str(e)}", level="error")
 		raise
 
 
 def remove_custom_fields():
 	"""
-	Remove all custom fields created by POS Next
+	Remove all custom fields created by POS ITQAN
 	"""
 	try:
 		log_message("Removing custom fields", level="info")
@@ -95,14 +95,14 @@ def remove_custom_fields():
 
 def remove_print_formats():
 	"""
-	Remove all print formats created by POS Next
+	Remove all print formats created by POS ITQAN
 	"""
 	try:
 		log_message("Removing print formats", level="info")
 
 		# List of print formats to remove
 		print_formats = [
-			"POS Next Receipt",
+			"POS ITQAN Receipt",
 		]
 
 		removed_count = 0
@@ -155,20 +155,20 @@ def remove_print_formats():
 
 def reset_pos_profiles():
 	"""
-	Reset POS Profile configurations set by POS Next
+	Reset POS Profile configurations set by POS ITQAN
 	"""
 	try:
 		log_message("Resetting POS Profile configurations", level="info")
 
-		# Find POS Profiles using POS Next print format
+		# Find POS Profiles using POS ITQAN print format
 		pos_profiles = frappe.get_all(
 			"POS Profile",
-			filters={"print_format": "POS Next Receipt"},
+			filters={"print_format": "POS ITQAN Receipt"},
 			fields=["name"]
 		)
 
 		if not pos_profiles:
-			log_message("No POS Profiles using POS Next configurations", level="info", indent=1)
+			log_message("No POS Profiles using POS ITQAN configurations", level="info", indent=1)
 			return
 
 		reset_count = 0
@@ -234,11 +234,11 @@ def log_message(message, level="info", indent=0):
 def get_custom_fields_for_cleanup():
 	"""
 	Get list of custom fields that can be safely removed
-	Returns list of field names that belong to POS Next
+	Returns list of field names that belong to POS ITQAN
 	"""
 	custom_fields = []
 
-	# Always safe to remove (POS Next specific)
+	# Always safe to remove (POS ITQAN specific)
 	custom_fields.extend([
 		"Sales Invoice-posa_pos_opening_shift",
 		"Sales Invoice-posa_is_printed",

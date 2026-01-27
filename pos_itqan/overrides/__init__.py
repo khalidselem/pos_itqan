@@ -2,6 +2,6 @@
 # For license information, please see license.txt
 
 """
-POS Next Overrides
+POS ITQAN Overrides
 Custom doctype class overrides for ERPNext
 """

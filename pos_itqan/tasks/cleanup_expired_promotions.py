@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025, POS Next and contributors
+# Copyright (c) 2025, POS ITQAN and contributors
 # For license information, please see license.txt
 
-"""Scheduled tasks for POS Next."""
+"""Scheduled tasks for POS ITQAN."""
 
 import frappe
 from frappe.utils import nowdate, getdate

@@ -1,5 +1,5 @@
 """
-POS Next Customer API
+POS ITQAN Customer API
 Handles customer search, creation, and management for POS operations
 """
 

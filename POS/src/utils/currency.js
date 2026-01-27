@@ -1,5 +1,5 @@
 /**
- * Currency formatting utility for POS Next
+ * Currency formatting utility for POS ITQAN
  * Provides consistent currency formatting across the application
  */
 

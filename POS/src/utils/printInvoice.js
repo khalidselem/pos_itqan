@@ -8,7 +8,7 @@ const log = logger.create('PrintInvoice')
  * @param {Object} invoiceData - The invoice document data
  * @param {string} printFormat - The print format name (optional)
  * @param {string} letterhead - The letterhead name (optional)
- * @note Use "POS Next Receipt" format for thermal printer (80mm) or configure via POS Profile
+ * @note Use "POS ITQAN Receipt" format for thermal printer (80mm) or configure via POS Profile
  */
 export async function printInvoice(
 	invoiceData,
@@ -21,7 +21,7 @@ export async function printInvoice(
 		}
 
 		const doctype = invoiceData.doctype || "Sales Invoice"
-		const format = printFormat || "POS Next Receipt"
+		const format = printFormat || "POS ITQAN Receipt"
 
 		// Build PDF print URL
 		const params = new URLSearchParams({
@@ -275,7 +275,7 @@ export function printInvoiceCustom(invoiceData) {
 			<div class="receipt">
 				<!-- Header -->
 				<div class="header">
-					<div class="company-name">${invoiceData.company || "POS Next"}</div>
+					<div class="company-name">${invoiceData.company || "POS ITQAN"}</div>
 					<div style="font-size: 12px;">${__('TAX INVOICE')}</div>
 				</div>
 
@@ -289,47 +289,45 @@ export function printInvoiceCustom(invoiceData) {
 						<span>${__('Date:')}</span>
 						<span>${new Date(invoiceData.posting_date || Date.now()).toLocaleString()}</span>
 					</div>
-					${
-						invoiceData.customer_name
-							? `
+					${invoiceData.customer_name
+			? `
 					<div>
 						<span>${__('Customer:')}</span>
 						<span>${invoiceData.customer_name}</span>
 					</div>
 					`
-							: ""
-					}
-					${
-						(invoiceData.status === "Partly Paid" || (invoiceData.outstanding_amount && invoiceData.outstanding_amount > 0 && invoiceData.outstanding_amount < invoiceData.grand_total))
-							? `
+			: ""
+		}
+					${(invoiceData.status === "Partly Paid" || (invoiceData.outstanding_amount && invoiceData.outstanding_amount > 0 && invoiceData.outstanding_amount < invoiceData.grand_total))
+			? `
 					<div class="partial-status">
 						<span>${__('Status:')}</span>
 						<span>${__('PARTIAL PAYMENT')}</span>
 					</div>
 					`
-							: ""
-					}
+			: ""
+		}
 				</div>
 
 				<!-- Items -->
 				<div class="items-table">
 					${invoiceData.items
-						.map((item) => {
-							// Determine if item has promotional pricing
-							const hasItemDiscount =
-								(item.discount_percentage &&
-									Number.parseFloat(item.discount_percentage) > 0) ||
-								(item.discount_amount &&
-									Number.parseFloat(item.discount_amount) > 0)
-							const isFree = item.is_free_item
-							const qty = item.quantity || item.qty
+			.map((item) => {
+				// Determine if item has promotional pricing
+				const hasItemDiscount =
+					(item.discount_percentage &&
+						Number.parseFloat(item.discount_percentage) > 0) ||
+					(item.discount_amount &&
+						Number.parseFloat(item.discount_amount) > 0)
+				const isFree = item.is_free_item
+				const qty = item.quantity || item.qty
 
-							// Display original list price for transparency
-							const displayRate = item.price_list_rate || item.rate
-							// Calculate subtotal before any price reductions
-							const subtotal = qty * displayRate
+				// Display original list price for transparency
+				const displayRate = item.price_list_rate || item.rate
+				// Calculate subtotal before any price reductions
+				const subtotal = qty * displayRate
 
-							return `
+				return `
 						<div class="item-row">
 							<div class="item-name">
 								${item.item_name || item.item_code} ${isFree ? __('(FREE)') : ""}
@@ -338,38 +336,35 @@ export function printInvoiceCustom(invoiceData) {
 								<span>${qty} × ${formatCurrency(displayRate)}</span>
 								<span><strong>${formatCurrency(subtotal)}</strong></span>
 							</div>
-							${
-								hasItemDiscount
-									? `
+							${hasItemDiscount
+						? `
 							<div class="item-discount">
 								<span>Discount ${item.discount_percentage ? `(${Number(item.discount_percentage).toFixed(2)}%)` : ""}</span>
 								<span>-${formatCurrency(item.discount_amount || 0)}</span>
 							</div>
 							`
-									: ""
-							}
-							${
-								item.serial_no
-									? `
+						: ""
+					}
+							${item.serial_no
+						? `
 							<div class="item-serials">
 								<div class="item-serials-label">${__('Serial No:')}</div>
 								<div class="item-serials-list">${item.serial_no.replace(/\n/g, ', ')}</div>
 							</div>
 							`
-									: ""
-							}
+						: ""
+					}
 						</div>
 						`
-						})
-						.join("")}
+			})
+			.join("")}
 				</div>
 
 				<!-- Totals -->
 				<div class="totals">
-					${
-						invoiceData.total_taxes_and_charges &&
-						invoiceData.total_taxes_and_charges > 0
-							? `
+					${invoiceData.total_taxes_and_charges &&
+			invoiceData.total_taxes_and_charges > 0
+			? `
 					<div class="total-row">
 						<span>${__('Subtotal:')}</span>
 						<span>${formatCurrency((invoiceData.grand_total || 0) - (invoiceData.total_taxes_and_charges || 0))}</span>
@@ -379,18 +374,17 @@ export function printInvoiceCustom(invoiceData) {
 						<span>${formatCurrency(invoiceData.total_taxes_and_charges)}</span>
 					</div>
 					`
-							: ""
-					}
-					${
-						invoiceData.discount_amount
-							? `
+			: ""
+		}
+					${invoiceData.discount_amount
+			? `
 					<div class="total-row" style="color: #28a745;">
 						<span>Additional Discount${invoiceData.additional_discount_percentage ? ` (${Number(invoiceData.additional_discount_percentage).toFixed(1)}%)` : ""}:</span>
 						<span>-${formatCurrency(Math.abs(invoiceData.discount_amount))}</span>
 					</div>
 					`
-							: ""
-					}
+			: ""
+		}
 					<div class="total-row grand-total">
 						<span>${__('TOTAL:')}</span>
 						<span>${formatCurrency(invoiceData.grand_total)}</span>
@@ -398,49 +392,46 @@ export function printInvoiceCustom(invoiceData) {
 				</div>
 
 				<!-- Payments -->
-				${
-					invoiceData.payments && invoiceData.payments.length > 0
-						? `
+				${invoiceData.payments && invoiceData.payments.length > 0
+			? `
 				<div class="payments">
 					<div style="font-weight: bold; margin-bottom: 5px; font-size: 12px;">Payments:</div>
 					${invoiceData.payments
-						.map(
-							(payment) => `
+				.map(
+					(payment) => `
 						<div class="payment-row">
 							<span>${payment.mode_of_payment}:</span>
 							<span>${formatCurrency(payment.amount)}</span>
 						</div>
 					`,
-						)
-						.join("")}
+				)
+				.join("")}
 					<div class="payment-row total-paid">
 						<span>${__('Total Paid:')}</span>
 						<span>${formatCurrency(invoiceData.paid_amount || 0)}</span>
 					</div>
-					${
-						invoiceData.change_amount && invoiceData.change_amount > 0
-							? `
+					${invoiceData.change_amount && invoiceData.change_amount > 0
+				? `
 					<div class="payment-row" style="font-weight: bold; margin-top: 5px;">
 						<span>${__('Change:')}</span>
 						<span>${formatCurrency(invoiceData.change_amount)}</span>
 					</div>
 					`
-							: ""
-					}
-					${
-						invoiceData.outstanding_amount && invoiceData.outstanding_amount > 0
-							? `
+				: ""
+			}
+					${invoiceData.outstanding_amount && invoiceData.outstanding_amount > 0
+				? `
 					<div class="outstanding-row">
 						<span>${__('BALANCE DUE:')}</span>
 						<span>${formatCurrency(invoiceData.outstanding_amount)}</span>
 					</div>
 					`
-							: ""
-					}
+				: ""
+			}
 				</div>
 				`
-						: ""
-				}
+			: ""
+		}
 
 				<!-- Footer -->
 				<div class="footer">

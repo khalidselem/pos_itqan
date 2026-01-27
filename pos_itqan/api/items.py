@@ -1,4 +1,4 @@
-# Copyright (c) 2024, POS Next and contributors
+# Copyright (c) 2024, POS ITQAN and contributors
 # For license information, please see license.txt
 
 import json
@@ -232,7 +232,7 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 			except Exception:
 				frappe.log_error(
 					f"Missing exchange rate from {price_list_currency} to {company_currency}",
-					"POS Next",
+					"POS ITQAN",
 				)
 
 		item["price_list_currency"] = price_list_currency

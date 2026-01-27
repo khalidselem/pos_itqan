@@ -1,5 +1,5 @@
 """
-Installation and Migration hooks for POS Next
+Installation and Migration hooks for POS ITQAN
 
 This module relies on Frappe's fixture system for:
 - Custom fields (custom_field.json)
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 def after_install():
 	"""Hook that runs after app installation"""
 	try:
-		log_message("POS Next: Running post-install setup", level="info")
+		log_message("POS ITQAN: Running post-install setup", level="info")
 
 		# Setup default print format for POS Profiles
 		setup_default_print_format()
@@ -29,14 +29,14 @@ def after_install():
 		frappe.clear_cache()
 		frappe.db.commit()
 
-		log_message("POS Next: Installation completed successfully", level="success")
+		log_message("POS ITQAN: Installation completed successfully", level="success")
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(
-			title="POS Next Installation Error",
+			title="POS ITQAN Installation Error",
 			message=frappe.get_traceback()
 		)
-		log_message(f"POS Next: Installation error - {str(e)}", level="error")
+		log_message(f"POS ITQAN: Installation error - {str(e)}", level="error")
 		raise
 
 
@@ -50,29 +50,29 @@ def after_migrate():
 		frappe.clear_cache()
 		frappe.db.commit()
 
-		log_message("POS Next: Migration completed successfully", level="success")
+		log_message("POS ITQAN: Migration completed successfully", level="success")
 	except Exception as e:
 		frappe.db.rollback()
 		frappe.log_error(
-			title="POS Next Migration Error",
+			title="POS ITQAN Migration Error",
 			message=frappe.get_traceback()
 		)
-		log_message(f"POS Next: Migration error - {str(e)}", level="error")
+		log_message(f"POS ITQAN: Migration error - {str(e)}", level="error")
 		raise
 
 
 def setup_default_print_format(quiet=False):
 	"""
-	Set POS Next Receipt as default print format for POS Profiles if not already set.
+	Set POS ITQAN Receipt as default print format for POS Profiles if not already set.
 
 	Args:
 		quiet (bool): If True, suppress detailed logs
 	"""
 	try:
 		# Check if the print format exists
-		if not frappe.db.exists("Print Format", "POS Next Receipt"):
+		if not frappe.db.exists("Print Format", "POS ITQAN Receipt"):
 			if not quiet:
-				log_message("POS Next Receipt print format not found, skipping default setup", level="warning")
+				log_message("POS ITQAN Receipt print format not found, skipping default setup", level="warning")
 			return
 
 		# Get all POS Profiles without a print format
@@ -90,7 +90,7 @@ def setup_default_print_format(quiet=False):
 						"POS Profile",
 						profile.name,
 						"print_format",
-						"POS Next Receipt",
+						"POS ITQAN Receipt",
 						update_modified=False
 					)
 					if not quiet:
