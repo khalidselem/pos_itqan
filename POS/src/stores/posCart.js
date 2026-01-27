@@ -396,7 +396,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 			// Find matching cart item by item_code and uom
 			const cartItem = invoiceItems.value.find(
 				item => item.item_code === freeItem.item_code &&
-				(item.uom || item.stock_uom) === (freeItem.uom || freeItem.stock_uom)
+					(item.uom || item.stock_uom) === (freeItem.uom || freeItem.stock_uom)
 			)
 
 			if (cartItem) {
@@ -1338,8 +1338,15 @@ export const usePOSCartStore = defineStore("posCart", () => {
 			if (updates.warehouse !== undefined) cartItem.warehouse = updates.warehouse
 			if (updates.discount_percentage !== undefined) cartItem.discount_percentage = updates.discount_percentage
 			if (updates.discount_amount !== undefined) cartItem.discount_amount = updates.discount_amount
-			if (updates.price_list_rate !== undefined) cartItem.price_list_rate = updates.price_list_rate
+			// Update rate/price_list_rate if provided
+			if (updates.rate !== undefined) {
+				cartItem.rate = updates.rate
+				cartItem.price_list_rate = updates.rate // Ensure base price is updated
+			} else if (updates.price_list_rate !== undefined) {
+				cartItem.price_list_rate = updates.price_list_rate
+			}
 			if (updates.serial_no !== undefined) cartItem.serial_no = updates.serial_no
+			if (updates.custom_cut_type !== undefined) cartItem.custom_cut_type = updates.custom_cut_type
 
 			recalculateItem(cartItem)
 			rebuildIncrementalCache()
