@@ -16,7 +16,7 @@
 
 ---
 
-## 🎯 Why POS Next?
+## 🎯 Why POS ITQAN?
 
 POS Next is a **complete rewrite** of the ERPNext POS system, built from the ground up with modern technologies to deliver:
 
@@ -33,13 +33,7 @@ POS Next is a **complete rewrite** of the ERPNext POS system, built from the gro
 
 ![Sales Cycle Demo](docs/screenshots/sales-cycle.gif)
 
-## 📞 Support & Community
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/BrainWise-DEV/pos_next/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/BrainWise-DEV/pos_next/discussions)
-- 📖 **Forum**: [Frappe Community](https://discuss.frappe.io/)
-- 📱 **Telegram Group**: [Join our community](https://t.me/+J2WHnNKCn8ZhOWQ0) - Get help, share ideas, and connect with other users
-- 📧 **Email**: support@brainwise.me
 
 ### Key Features
 
@@ -494,6 +488,5 @@ Coming soon:
 
 ⭐ Star us on GitHub — it motivates us a lot!
 
-[Report Bug](https://github.com/BrainWise-DEV/pos_next/issues) • [Request Feature](https://github.com/BrainWise-DEV/pos_next/issues) • [Documentation](https://github.com/BrainWise-DEV/pos_next/wiki)
 
 </div>
