@@ -536,5 +536,89 @@
         "reqd": 0,
         "doctype": "Custom Field",
         "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_area",
+        "fieldtype": "Data",
+        "label": "Area",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_area",
+        "insert_after": "mobile_no",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_block",
+        "fieldtype": "Data",
+        "label": "Block",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_block",
+        "insert_after": "custom_area",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_street",
+        "fieldtype": "Data",
+        "label": "Street",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_street",
+        "insert_after": "custom_block",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_jadd",
+        "fieldtype": "Data",
+        "label": "Jadd",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_jadd",
+        "insert_after": "custom_street",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_house",
+        "fieldtype": "Data",
+        "label": "House",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_house",
+        "insert_after": "custom_jadd",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_floor",
+        "fieldtype": "Data",
+        "label": "Floor",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_floor",
+        "insert_after": "custom_house",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Customer",
+        "fieldname": "custom_apartment",
+        "fieldtype": "Data",
+        "label": "Apartment",
+        "module": "POS ITQAN",
+        "name": "Customer-custom_apartment",
+        "insert_after": "custom_floor",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
     }
 ]

@@ -15,12 +15,16 @@
 					/>
 				</div>
 
-				<!-- Mobile Number with Country Code Selector -->
-				<div>
-					<label class="block text-start text-sm font-medium text-gray-700 mb-2">
-						{{ __("Mobile Number") }}
-					</label>
-					<div class="flex gap-2">
+				<!-- Phone & Address Section -->
+				<div class="space-y-4">
+					<h3 class="text-sm font-semibold text-orange-500">{{ __("Phone & Address") }}</h3>
+
+					<!-- Mobile Number -->
+					<div>
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">
+							{{ __("Mobile Number") }}
+						</label>
+						<div class="flex gap-2">
 						<!-- Country Code Dropdown -->
 						<div class="relative" ref="dropdownRef">
 							<button
@@ -89,6 +93,49 @@
 							@input="updateMobileNumber"
 						/>
 					</div>
+				</div>
+
+				<!-- Address Fields Grid -->
+				<div class="grid grid-cols-2 gap-4">
+					<!-- Area -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Area") }}</label>
+						<Input v-model="customerData.custom_area" type="text" />
+					</div>
+					<!-- House -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("House") }}</label>
+						<Input v-model="customerData.custom_house" type="text" />
+					</div>
+
+					<!-- Block -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Block") }}</label>
+						<Input v-model="customerData.custom_block" type="text" />
+					</div>
+					<!-- Floor -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Floor") }}</label>
+						<Input v-model="customerData.custom_floor" type="text" />
+					</div>
+
+					<!-- Street -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Street") }}</label>
+						<Input v-model="customerData.custom_street" type="text" />
+					</div>
+					<!-- Apartment -->
+					<div class="col-span-1">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Apartment") }}</label>
+						<Input v-model="customerData.custom_apartment" type="text" />
+					</div>
+
+					<!-- Jadd (Full width) -->
+					<div class="col-span-2">
+						<label class="block text-start text-sm font-medium text-gray-700 mb-2">{{ __("Jadd") }}</label>
+						<Input v-model="customerData.custom_jadd" type="text" />
+					</div>
+				</div>
 				</div>
 
 				<!-- Email -->
@@ -235,6 +282,14 @@ const customerData = ref({
 	email_id: "",
 	customer_group: "Individual",
 	territory: "All Territories",
+	// Custom Address Fields
+	custom_area: "",
+	custom_house: "",
+	custom_block: "",
+	custom_floor: "",
+	custom_street: "",
+	custom_apartment: "",
+	custom_jadd: "",
 })
 
 // =============================================================================
@@ -342,6 +397,14 @@ const createCustomerResource = createResource({
 			territory: customerData.value.territory || __("All Territories"),
 			mobile_no: customerData.value.mobile_no || "",
 			email_id: customerData.value.email_id || "",
+			// Custom Fields
+			custom_area: customerData.value.custom_area || "",
+			custom_house: customerData.value.custom_house || "",
+			custom_block: customerData.value.custom_block || "",
+			custom_floor: customerData.value.custom_floor || "",
+			custom_street: customerData.value.custom_street || "",
+			custom_apartment: customerData.value.custom_apartment || "",
+			custom_jadd: customerData.value.custom_jadd || "",
 		},
 	}),
 	onSuccess: (data) => {
@@ -366,6 +429,14 @@ const updateCustomerResource = createResource({
 			territory: customerData.value.territory || __("All Territories"),
 			mobile_no: customerData.value.mobile_no || "",
 			email_id: customerData.value.email_id || "",
+			// Custom Fields
+			custom_area: customerData.value.custom_area || "",
+			custom_house: customerData.value.custom_house || "",
+			custom_block: customerData.value.custom_block || "",
+			custom_floor: customerData.value.custom_floor || "",
+			custom_street: customerData.value.custom_street || "",
+			custom_apartment: customerData.value.custom_apartment || "",
+			custom_jadd: customerData.value.custom_jadd || "",
 		},
 	}),
 	onSuccess: (data) => {
@@ -463,6 +534,13 @@ const resetForm = () => {
 		email_id: "",
 		customer_group: "Individual",
 		territory: "All Territories",
+		custom_area: "",
+		custom_house: "",
+		custom_block: "",
+		custom_floor: "",
+		custom_street: "",
+		custom_apartment: "",
+		custom_jadd: "",
 	})
 	selectedCountryCode.value = ""
 	phoneNumber.value = ""
@@ -486,6 +564,16 @@ watch(
 			customerData.value.email_id = customer.email_id || ""
 			customerData.value.customer_group = customer.customer_group || "Individual"
 			customerData.value.territory = customer.territory || "All Territories"
+			
+			// Populate Custom Fields
+			customerData.value.custom_area = customer.custom_area || ""
+			customerData.value.custom_house = customer.custom_house || ""
+			customerData.value.custom_block = customer.custom_block || ""
+			customerData.value.custom_floor = customer.custom_floor || ""
+			customerData.value.custom_street = customer.custom_street || ""
+			customerData.value.custom_apartment = customer.custom_apartment || ""
+			customerData.value.custom_jadd = customer.custom_jadd || ""
+
 			// Handle mobile_no with country code
 			if (customer.mobile_no) {
 				customerData.value.mobile_no = customer.mobile_no
