@@ -231,6 +231,10 @@ export function useInvoice() {
 				brand: item.brand,
 				// Resolved barcode flag - prevents editing qty/uom/rate for weighted/priced barcodes
 				is_resolved_barcode: item.is_resolved_barcode || false,
+				// Cut types available for this item (for butcher/meat items)
+				cut_types: item.cut_types || [],
+				// Selected cut type
+				custom_cut_type: item.custom_cut_type || "",
 			}
 			invoiceItems.value.push(newItem)
 			// Recalculate the newly added item to apply taxes
@@ -648,6 +652,7 @@ export function useInvoice() {
 			discount_percentage: item.discount_percentage || 0,
 			discount_amount: item.discount_amount || 0,
 			pricing_rules: stringifyPricingRules(item.pricing_rules),
+			custom_cut_type: item.custom_cut_type || "",
 		}))
 	}
 
