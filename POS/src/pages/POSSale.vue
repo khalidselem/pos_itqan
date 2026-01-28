@@ -618,6 +618,13 @@
 				@delete-draft="handleDeleteDraft"
 				@refresh-history="loadInvoiceHistoryData"
 			/>
+      
+      <!-- POS Payments -->
+      <POSPayments
+        v-model="showPOSPayments"
+        :pos-profile="shiftStore.profileName"
+        :currency="shiftStore.profileCurrency"
+      />
 
 			<!-- Invoice Detail Dialog -->
 			<InvoiceDetailDialog
@@ -953,7 +960,9 @@ import PromotionManagement from "@/components/sale/PromotionManagement.vue";
 import ReturnInvoiceDialog from "@/components/sale/ReturnInvoiceDialog.vue";
 import WarehouseAvailabilityDialog from "@/components/sale/WarehouseAvailabilityDialog.vue";
 import POSSettings from "@/components/settings/POSSettings.vue";
+import POSPayments from "@/components/pos/POSPayments.vue"
 import InvoiceManagement from "@/components/invoices/InvoiceManagement.vue";
+import InvoiceFilters from "@/components/invoices/InvoiceFilters.vue";
 import InvoiceDetailDialog from "@/components/invoices/InvoiceDetailDialog.vue";
 import { useRealtimeStock } from "@/composables/useRealtimeStock";
 import { usePOSEvents } from "@/composables/usePOSEvents";
@@ -1058,6 +1067,7 @@ const showStockLookup = ref(false);
 
 // Invoice Management dialog
 const showInvoiceManagement = ref(false);
+const showPOSPayments = ref(false);
 
 // Invoice Detail dialog
 const showInvoiceDetail = ref(false);
@@ -2484,21 +2494,28 @@ function restoreBodyStyles() {
 	bodyStyleSnapshot = null;
 }
 
+
 // Management and Promotion handlers
 function handleManagementMenuClick(menuItem) {
-	if (menuItem === "promotions") {
-		showPromotionManagement.value = true;
-	} else if (menuItem === "settings") {
-		showPOSSettings.value = true;
+	if (menuItem === "dashboard") {
+		router.push("/dashboard")
+	} else if (menuItem === "promotions") {
+		showPromotionManagement.value = true
+	} else if (menuItem === "products") {
+		showStockLookup.value = true
+	} else if (menuItem === "reports") {
+		// Open reports in new tab
+		window.open("/app/pos-closing-voucher", "_blank")
 	} else if (menuItem === "invoices") {
 		// Load invoice history data before showing
 		loadInvoiceHistoryData();
 		// Load drafts data
 		draftsStore.loadDrafts();
 		showInvoiceManagement.value = true;
-	} else if (menuItem === "products") {
-		// Open Stock Lookup dialog in search mode
-		showStockLookup.value = true;
+	} else if (menuItem === "payments") {
+		showPOSPayments.value = true
+	} else if (menuItem === "settings") {
+		showPOSSettings.value = true;
 	}
 }
 

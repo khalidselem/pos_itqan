@@ -799,6 +799,202 @@ def _complete_offline_sync(sync_record_name, invoice_name):
         return
 
     try:
+        frappe.db.set_value(
+            "Offline Invoice Sync",
+            sync_record_name,
+            {
+                "status": "Synced",
+                "sales_invoice": invoice_name,
+                "synced_at": frappe.utils.now(),
+            }
+        )
+    except Exception as e:
+        frappe.log_error(f"Failed to update sync record {sync_record_name}: {e}")
+
+
+# ==========================================
+# POS Payments Section API
+# ==========================================
+
+
+@frappe.whitelist()
+def get_customer_outstanding_invoices(customer):
+    """
+    Fetch all unpaid or partially paid POS invoices for a specific customer.
+    """
+    if not customer:
+        return []
+
+    # Fetch Sales Invoices that are POS, Submitted, and have outstanding amount
+    invoices = frappe.db.get_list(
+        "Sales Invoice",
+        filters={
+            "customer": customer,
+            "docstatus": 1,  # Submitted
+            "is_pos": 1,
+            "outstanding_amount": [">", 0],
+            "status": ["in", ["Unpaid", "Overdue", "Partly Paid"]],
+        },
+        fields=[
+            "name",
+            "posting_date",
+            "grand_total",
+            "outstanding_amount",
+            "status",
+            "currency",
+            "due_date"
+        ],
+        order_by="posting_date asc",
+    )
+
+    return invoices
+
+
+@frappe.whitelist()
+def create_consolidated_payment_entry(data):
+    """
+    Create a Payment Entry for multiple invoices.
+    
+    Args:
+        data (dict/json): Contains:
+            - customer (str)
+            - company (str)
+            - pos_profile (str)
+            - payments (list): [{"mode_of_payment": "Cash", "amount": 100}, ...]
+            - invoices (list): [{"name": "INV-001", "allocated_amount": 50}, ...]
+    """
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        customer = data.get("customer")
+        company = data.get("company") 
+        pos_profile = data.get("pos_profile")
+        payments = data.get("payments", [])     # List of payment modes and amounts
+        invoices = data.get("invoices", [])     # List of invoices to allocate against
+
+        if not customer or not company or not payments:
+            frappe.throw(_("Missing required data for payment entry"))
+
+        # Calculate total paid amount
+        total_paid_amount = sum(flt(p.get("amount")) for p in payments)
+
+        if total_paid_amount <= 0:
+            frappe.throw(_("Total payment amount must be greater than zero"))
+
+        # Get default Payment Mode (use the first one or primary)
+        # For consolidated entry, we might need multiple rows or a main mode.
+        # Payment Entry usually takes one Mode of Payment. 
+        # If multiple modes are used (e.g. Cash + Card), we technically need multiple 
+        # Payment Entries OR a Journal Entry. 
+        # However, for POS simplicity, if we want ONE transaction, we might need to check
+        # if ERPNext supports multi-mode Payment Entry (it typically doesn't natively in one doc 
+        # without custom fields, but POS Invoice does).
+        #
+        # STRATEGY: 
+        # If multiple payment modes are used, we will create Multiple Payment Entries 
+        # OR we treat it as a POS Invoice with 0 items but negative outstanding? 
+        # No, "Payment Entry" is the standard way to pay existing invoices.
+        #
+        # If the user splits payment (50 Cash, 50 Card), we should probably create 
+        # TWO Payment Entries effectively, or one if only one mode.
+        # Let's iterate through payments and create entries.
+        
+        created_entries = []
+        
+        # Group payments by Mode of Payment
+        # Actually, simpler loop: For each payment component, create a PE
+        # But we need to distribute the 'invoices' allocation across these PEs.
+        # This gets complex. 
+        #
+        # Alternative: The "POS Payments" screen is essentially making a "Payment"
+        # against the customer account.
+        
+        # Let's try to handle it sequentially.
+        # We have a list of invoices with 'allocated_amount'.
+        # We have a total pool of money from 'payments'.
+        
+        remaining_invoices = [inv for inv in invoices if flt(inv.get("allocated_amount")) > 0]
+        
+        for pay_mode in payments:
+            mode = pay_mode.get("mode_of_payment")
+            amount = flt(pay_mode.get("amount"))
+            
+            if amount <= 0:
+                continue
+                
+            # We need to allocate this 'amount' to the 'remaining_invoices'
+            # We consume invoices from the list until this amount is exhausted.
+            
+            references = []
+            amount_left_to_allocate = amount
+            
+            # Use a copy to iterate so we can modify the original list's allocated amounts
+            for inv in remaining_invoices:
+                if amount_left_to_allocate <= 0:
+                    break
+                    
+                needed = flt(inv.get("allocated_amount"))
+                if needed <= 0:
+                    continue
+                
+                allocated = min(amount_left_to_allocate, needed)
+                
+                references.append({
+                    "reference_doctype": "Sales Invoice",
+                    "reference_name": inv.get("name"),
+                    "total_amount": flt(inv.get("grand_total")), 
+                    "outstanding_amount": flt(inv.get("outstanding_amount")),
+                    "allocated_amount": allocated
+                })
+                
+                # Update tracking vars
+                inv["allocated_amount"] = needed - allocated
+                amount_left_to_allocate -= allocated
+            
+            # If we couldn't allocate everything (e.g. overpayment/unallocated), 
+            # the remainder goes as unallocated on account (if allowed)
+            # or we just create the PE with the full amount and partial allocation.
+            
+            # Create the Payment Entry
+            pe = frappe.new_doc("Payment Entry")
+            pe.payment_type = "Receive"
+            pe.party_type = "Customer"
+            pe.party = customer
+            pe.company = company
+            pe.paid_amount = amount
+            pe.received_amount = amount
+            pe.mode_of_payment = mode
+            
+            # Fetch default accounts
+            # We can use the helper we already have: get_payment_account
+            account_info = get_payment_account(mode, company)
+            if account_info and account_info.get("account"):
+                pe.paid_to = account_info.get("account")
+            
+            # Set target account (Receivable)
+            # Should be fetched from Customer or Company default
+            # pe.paid_from = ... (Automatic in Payment Entry save usually)
+            
+            # Add References
+            for ref in references:
+                pe.append("references", ref)
+            
+            # Set POS Profile reference if custom field exists (optional)
+            if hasattr(pe, "pos_profile"):
+                pe.pos_profile = pos_profile
+                
+            pe.save()
+            pe.submit()
+            created_entries.append(pe.name)
+            
+        return {"success": True, "payment_entries": created_entries}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "POS Payment Creation Error")
+        frappe.throw(_("Failed to create payments: {0}").format(str(e)))
+
+    try:
         sync_doc = frappe.get_doc("Offline Invoice Sync", sync_record_name)
         sync_doc.sales_invoice = invoice_name
         sync_doc.status = "Synced"
