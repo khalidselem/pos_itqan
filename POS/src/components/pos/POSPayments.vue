@@ -177,14 +177,16 @@
                         </div>
                         
                         <div class="flex justify-between items-center pt-2">
-                            <span class="text-gray-600 font-medium">{{ __('Difference') }}</span>
+                            <span class="text-gray-600 font-medium">
+                                {{ difference < 0 ? __('Unused / Advance') : __('Difference') }}
+                            </span>
                             <span 
                                 :class="[
                                     'font-bold text-xl',
-                                    difference < 0 ? 'text-red-500' : 'text-emerald-600'
+                                    difference < 0 ? 'text-blue-600' : (difference > 0 ? 'text-red-500' : 'text-emerald-600')
                                 ]"
                             >
-                                {{ formatCurrency(difference) }}
+                                {{ formatCurrency(Math.abs(difference)) }}
                             </span>
                         </div>
                     </div>
@@ -362,7 +364,10 @@ const difference = computed(() => {
 })
 
 const canSubmit = computed(() => {
-    return selectedInvoices.value.length > 0 && totalPaymentInput.value > 0 && totalPaymentInput.value <= totalSelectedOutstanding.value + 0.001 // simple tolerance
+    // Must handle case where we have a customer and payment amount, regardless of invoices
+    const hasCustomer = !!selectedCustomer.value
+    const hasPayment = totalPaymentInput.value > 0
+    return hasCustomer && hasPayment
 })
 
 const selectAll = computed({
@@ -428,6 +433,8 @@ watch(() => props.modelValue, (val) => {
         invoices.value = []
         selectedInvoices.value = []
         Object.keys(payments.value).forEach(k => payments.value[k] = 0)
+        // Reload customer resource to ensure fresh data
+        customerResource.reload()
     }
 })
 
@@ -467,9 +474,19 @@ function callWithRetry(method, args) {
 async function handleSubmit() {
     if (!canSubmit.value) return
     
-    // Prevent overpayment block
-    if (totalPaymentInput.value > totalSelectedOutstanding.value) {
-        showError('Payment exceeds total outstanding amount')
+    // Warn if no invoice selected but continuing (Optional, maybe just proceed)
+    
+    // Resolve proper customer ID
+    let customerId = null
+    const custVal = selectedCustomer.value
+    if (typeof custVal === 'object' && custVal?.value) {
+        customerId = custVal.value
+    } else if (typeof custVal === 'string') {
+        customerId = custVal
+    }
+    
+    if (!customerId) {
+        showError(__('Please select a valid customer'))
         return
     }
 
@@ -492,16 +509,6 @@ async function handleSubmit() {
             }
         })
 
-        // We need company from POS Profile or session
-        // Assuming we can get it from shiftStore or props, but simpler to rely on backend to infer or pass explicit
-        // For now, let's assume we can get it via call context or we need to pass it.
-        // Let's rely on backend logic finding default company if not passed, BUT backend api expects it.
-        // We will try to get it from frappe.defaults or similar, but better to pass it.
-        // The props doesn't have company. Let's see if we can get it from somewhere.
-        // Actually, props SHOULD have company if possible. POSSale passes it to other components.
-        // We will add `company` to props in next step or infer it.
-        // For now, let's pass it if available or let backend handle error.
-        
         await callWithRetry('pos_itqan.api.invoices.create_consolidated_payment_entry', {
             data: {
                 customer: selectedCustomer.value.value,
