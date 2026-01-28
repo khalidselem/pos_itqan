@@ -1007,6 +1007,9 @@ def create_consolidated_payment_entry(data):
                 profile_doc = frappe.get_doc("POS Profile", pos_profile)
                 if profile_doc.cost_center:
                     pe.cost_center = profile_doc.cost_center
+            
+            # Set Reference Date
+            pe.reference_date = nowdate()
                 
             pe.save()
             pe.submit()
@@ -1022,6 +1025,14 @@ def create_consolidated_payment_entry(data):
             msg = e.message
         elif hasattr(e, "msg") and e.msg: # Sometimes exceptions have msg attr
             msg = e.msg
+        
+        # Debugging: Append document dump to finding missing fields
+        try:
+             # Only dump meaningful fields
+             debug_doc = pe.as_dict()
+             msg += f" | Debug: {json.dumps(debug_doc, default=str)}"
+        except:
+             pass
             
         frappe.throw(_("Failed to create payments: {0}").format(msg))
 

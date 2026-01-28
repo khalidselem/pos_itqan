@@ -36,25 +36,32 @@
             <!-- LEFT PANEL: Customer Selection -->
             <div class="w-1/4 min-w-[300px] border-e border-gray-200 bg-gray-50 flex flex-col">
               <div class="p-4 border-b border-gray-200 bg-white">
-                <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Customer') }}</label>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">{{ __('Customer') }}</label>
                 <div class="flex gap-2">
-                  <div class="relative flex-1">
-                    <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-gray-400">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="relative flex-1 group">
+                    <span class="absolute inset-y-0 start-0 flex items-center ps-3 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                        </svg>
                     </span>
-                    <Combobox v-model="selectedCustomer" :options="customerOptions" @input="handleCustomerSearch" nullable>
+                    <Combobox 
+                        v-model="selectedCustomer" 
+                        :options="customerOptions" 
+                        @input="handleCustomerSearch" 
+                        nullable
+                        class="transition-all"
+                        :placeholder="__('Search for customer...')"
+                    >
                         <template #option="{ option }">
-                            <div class="flex flex-col py-1">
-                                <span class="font-medium text-gray-900">{{ option.label }}</span>
+                            <div class="flex flex-col py-1.5 px-1">
+                                <span class="font-medium text-gray-900 text-sm">{{ option.label }}</span>
                                 <span class="text-xs text-gray-500">{{ option.value }}</span>
                             </div>
                         </template>
                     </Combobox>
                   </div>
                   <button 
-                    class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" 
+                    class="px-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors shadow-sm active:scale-95" 
                     title="Add Customer"
                     @click="$emit('create-customer')"
                   >
@@ -67,7 +74,10 @@
 
               <!-- Customer Info (if selected) -->
               <div v-if="selectedCustomer" class="p-4 flex-1 overflow-y-auto">
-                 <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                 <div class="bg-emerald-50 p-5 rounded-xl border border-emerald-200 shadow-sm relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <svg class="w-24 h-24 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
                             {{ customerDisplay.initial }}
