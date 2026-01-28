@@ -1001,6 +1001,12 @@ def create_consolidated_payment_entry(data):
             # Set POS Profile reference if custom field exists (optional)
             if hasattr(pe, "pos_profile"):
                 pe.pos_profile = pos_profile
+            
+            # Fetch and set Cost Center from POS Profile
+            if pos_profile:
+                profile_doc = frappe.get_doc("POS Profile", pos_profile)
+                if profile_doc.cost_center:
+                    pe.cost_center = profile_doc.cost_center
                 
             pe.save()
             pe.submit()
