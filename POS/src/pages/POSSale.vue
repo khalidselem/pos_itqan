@@ -621,9 +621,11 @@
       
       <!-- POS Payments -->
       <POSPayments
+        ref="posPaymentsRef"
         v-model="showPOSPayments"
         :pos-profile="shiftStore.profileName"
         :currency="shiftStore.profileCurrency"
+        @create-customer="handleCreateCustomerFromPayments"
       />
 
 			<!-- Invoice Detail Dialog -->
@@ -2196,6 +2198,11 @@ async function handleCustomerCreated(newCustomer) {
 	// Add new customer to IndexedDB cache for instant search availability
 	await customerSearchStore.addCustomerToCache(newCustomer);
 
+    // If POS Payments is open, set the customer there too
+    if (showPOSPayments.value && posPaymentsRef.value) {
+        posPaymentsRef.value.setCustomer(newCustomer)
+    }
+
 	showSuccess(__("{0} created and selected", [newCustomer.customer_name]));
 }
 
@@ -2517,6 +2524,15 @@ function handleManagementMenuClick(menuItem) {
 	} else if (menuItem === "settings") {
 		showPOSSettings.value = true;
 	}
+}
+
+const posPaymentsRef = ref(null)
+
+function handleCreateCustomerFromPayments() {
+    // Open Create Customer dialog
+    uiStore.setInitialCustomerName('');
+    editCustomer.value = null;
+    uiStore.showCreateCustomerDialog = true;
 }
 
 // Load invoice history data

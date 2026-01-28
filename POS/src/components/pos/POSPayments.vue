@@ -2,7 +2,7 @@
   <Transition name="fade">
     <div
       v-if="show"
-      class="fixed inset-0 bg-black bg-opacity-50 z-[300]"
+      class="fixed inset-0 bg-black bg-opacity-50 z-[50]"
       @click.self="handleClose"
     >
       <div class="fixed inset-0 flex items-center justify-center p-4">
@@ -53,7 +53,11 @@
                         </template>
                     </Combobox>
                   </div>
-                  <button class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" title="Add Customer">
+                  <button 
+                    class="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" 
+                    title="Add Customer"
+                    @click="$emit('create-customer')"
+                  >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -388,6 +392,19 @@ function handleClose() {
 function formatCurrency(amount, currency = props.currency) {
     return formatCurrencyUtil(amount, currency)
 }
+
+function setCustomer(customer) {
+    if (!customer) return
+    selectedCustomer.value = {
+        label: customer.customer_name,
+        value: customer.name,
+        mobile: customer.mobile_no
+    }
+}
+
+defineExpose({
+    setCustomer
+})
 
 // Helper to call frappe methods
 function callWithRetry(method, args) {
