@@ -1002,11 +1002,15 @@ def create_consolidated_payment_entry(data):
             if hasattr(pe, "pos_profile"):
                 pe.pos_profile = pos_profile
             
-            # Fetch and set Cost Center from POS Profile
+            # Fetch and set Cost Center from POS Profile or Company
             if pos_profile:
                 profile_doc = frappe.get_doc("POS Profile", pos_profile)
                 if profile_doc.cost_center:
                     pe.cost_center = profile_doc.cost_center
+            
+            # Fallback Cost Center from Company
+            if not pe.cost_center and company:
+                pe.cost_center = frappe.db.get_value("Company", company, "cost_center")
             
             # Set Reference Date
             pe.reference_date = nowdate()
@@ -1019,22 +1023,35 @@ def create_consolidated_payment_entry(data):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "POS Payment Creation Error")
-        # Ensure we capture the real message, especially for ValidationError
+        
+        # Manually construct error message
         msg = str(e)
         if hasattr(e, "message") and e.message:
-            msg = e.message
-        elif hasattr(e, "msg") and e.msg: # Sometimes exceptions have msg attr
-            msg = e.msg
+            msg = str(e.message)
+        elif hasattr(e, "msg") and e.msg:
+            msg = str(e.msg)
+            
+        # If it's a Validation Error list (common in Frappe)
+        if isinstance(msg, list):
+             msg = ", ".join([str(x) for x in msg])
         
-        # Debugging: Append document dump to finding missing fields
+        # Debugging: Append document dump
         try:
              # Only dump meaningful fields
-             debug_doc = pe.as_dict()
-             msg += f" | Debug: {json.dumps(debug_doc, default=str)}"
+             if 'pe' in locals() and pe:
+                 debug_doc = pe.as_dict()
+                 msg += f" | Debug: {json.dumps(debug_doc, default=str)}"
         except:
              pass
             
-        frappe.throw(_("Failed to create payments: {0}").format(msg))
+        # Avoid using frappe.throw inside except as it might be re-wrapped
+        frappe.local.response['http_status_code'] = 417
+        frappe.local.response['status'] = 'failed'
+        frappe.local.response['exc'] = frappe.get_traceback()
+        frappe.local.response['exception'] = msg # Passing simple message as exception
+        
+        # We return a message directly to force display
+        return {"status": "error", "message": f"Failed to create payments: {msg}"}
 
     try:
         sync_doc = frappe.get_doc("Offline Invoice Sync", sync_record_name)
