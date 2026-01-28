@@ -196,15 +196,12 @@
                         <div v-for="mode in paymentModes" :key="mode.name" class="relative">
                             <label class="block text-xs font-medium text-gray-700 mb-1 ps-1">{{ mode.label }}</label>
                             <div class="relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-                                    <span class="text-gray-500 sm:text-sm font-bold">{{ currencySymbol }}</span>
-                                </div>
                                 <input
                                     type="number"
                                     v-model.number="payments[mode.name]"
                                     min="0"
                                     step="0.001"
-                                    class="block w-full rounded-lg border-gray-300 ps-10 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 transition-colors"
+                                    class="block w-full rounded-lg border-gray-300 focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm py-2.5 transition-colors"
                                     :placeholder="'0.000'"
                                 />
                             </div>
@@ -272,6 +269,7 @@ const customerSearchQuery = ref('')
 const customerResource = createListResource({
   doctype: 'Customer',
   fields: ['name', 'customer_name', 'mobile_no'],
+  page_length: 100,
   auto: true,
   transform(data) {
     return data.map(c => ({
