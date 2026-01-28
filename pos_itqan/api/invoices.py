@@ -1014,7 +1014,20 @@ def create_consolidated_payment_entry(data):
             
             # Set Reference Date
             pe.reference_date = nowdate()
-                
+
+            # Attempt to set default naming series if not set
+            if not pe.naming_series:
+                 # Try to find a default series
+                 default_series = frappe.db.get_value("Property Setter", {"doc_type": "Payment Entry", "property": "naming_series"}, "value")
+                 if not default_series:
+                     # Try getting from the field default
+                     meta = frappe.get_meta("Payment Entry")
+                     if meta.get_field("naming_series"):
+                         default_series = meta.get_field("naming_series").default
+                 
+                 if default_series:
+                     pe.naming_series = default_series
+
             pe.save()
             pe.submit()
             created_entries.append(pe.name)
@@ -1037,21 +1050,13 @@ def create_consolidated_payment_entry(data):
         
         # Debugging: Append document dump
         try:
-             # Only dump meaningful fields
              if 'pe' in locals() and pe:
                  debug_doc = pe.as_dict()
                  msg += f" | Debug: {json.dumps(debug_doc, default=str)}"
         except:
              pass
             
-        # Avoid using frappe.throw inside except as it might be re-wrapped
-        frappe.local.response['http_status_code'] = 417
-        frappe.local.response['status'] = 'failed'
-        frappe.local.response['exc'] = frappe.get_traceback()
-        frappe.local.response['exception'] = msg # Passing simple message as exception
-        
-        # We return a message directly to force display
-        return {"status": "error", "message": f"Failed to create payments: {msg}"}
+        frappe.throw(_("Failed to create payments: {0}").format(msg))
 
     try:
         sync_doc = frappe.get_doc("Offline Invoice Sync", sync_record_name)
