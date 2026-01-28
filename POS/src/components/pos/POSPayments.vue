@@ -540,9 +540,24 @@ async function handleSubmit() {
 
         showSuccess('Payment submitted successfully')
         handleClose()
-    } catch (e) {
-        console.error(e)
-        showError(e.message || 'Failed to submit payment')
+    } catch (error) {
+        console.error("Payment Submission Error:", error)
+        
+        let msg = 'Failed to create payment'
+        if (error.messages && error.messages.length > 0) {
+            msg = error.messages.join(', ')
+        } else if (error.message) {
+            msg = error.message
+        } else if (error.exception) {
+             msg = error.exception
+        } else {
+             // Try to stringify
+             try {
+                 msg = JSON.stringify(error)
+             } catch(e) {}
+        }
+        
+        showError(msg)
     } finally {
         submitting.value = false
     }
