@@ -237,12 +237,15 @@
   </Transition>
 </template>
 
+</template>
+
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { Button, Combobox, createListResource } from 'frappe-ui'
 import { useFormatters } from '@/composables/useFormatters'
 import { useToast } from '@/composables/useToast'
 import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
+import { call } from "@/utils/apiWrapper"
 
 const props = defineProps({
   modelValue: Boolean,
@@ -412,7 +415,7 @@ watch(selectedCustomer, (newVal) => {
 async function fetchUnpaidInvoices(customer) {
     loadingInvoices.value = true
     try {
-        const res = await callWithRetry('pos_itqan.api.invoices.get_customer_outstanding_invoices', {
+        const res = await call('pos_itqan.api.invoices.get_customer_outstanding_invoices', {
             customer: customer
         })
         invoices.value = res || []
@@ -463,14 +466,6 @@ defineExpose({
     setCustomer
 })
 
-// Helper to call frappe methods
-function callWithRetry(method, args) {
-    return frappe.call({
-        method: method,
-        args: args
-    }).then(r => r.message)
-}
-
 async function handleSubmit() {
     if (!canSubmit.value) return
     
@@ -509,10 +504,10 @@ async function handleSubmit() {
             }
         })
 
-        await callWithRetry('pos_itqan.api.invoices.create_consolidated_payment_entry', {
+        await call('pos_itqan.api.invoices.create_consolidated_payment_entry', {
             data: {
-                customer: selectedCustomer.value.value,
-                company: frappe.defaults.get_default("company"), // Fallback, better to pass prop
+                customer: customerId,
+                // company: inferred by backend
                 pos_profile: props.posProfile,
                 payments: paymentList,
                 invoices: invoiceList
@@ -521,8 +516,6 @@ async function handleSubmit() {
 
         showSuccess('Payment submitted successfully')
         handleClose()
-        // Here we should probably refresh the invoice list if we were staying open,
-        // but since we close, it's fine.
     } catch (e) {
         console.error(e)
         showError(e.message || 'Failed to submit payment')
