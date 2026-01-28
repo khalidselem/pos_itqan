@@ -237,8 +237,6 @@
   </Transition>
 </template>
 
-</template>
-
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { Button, Combobox, createListResource } from 'frappe-ui'
