@@ -438,9 +438,13 @@ async function fetchUnpaidInvoices(customer) {
         const res = await call('pos_itqan.api.invoices.get_customer_outstanding_invoices', {
             customer: customer
         })
-        invoices.value = res || []
+        if (res === undefined || res === null) {
+             invoices.value = []
+        } else {
+             invoices.value = res
+        }
     } catch (e) {
-        console.error(e)
+        console.error("Fetch Invoice Error:", e)
         showError('Failed to fetch invoices')
     } finally {
         loadingInvoices.value = false
