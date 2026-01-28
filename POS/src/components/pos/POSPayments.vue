@@ -6,7 +6,7 @@
       @click.self="handleClose"
     >
       <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="w-full h-full max-w-7xl max-h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all">
+        <div class="w-full h-full max-w-5xl max-h-[80vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all">
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-emerald-50 to-teal-50">
             <div class="flex items-center gap-3">
@@ -69,18 +69,19 @@
               <div v-if="selectedCustomer" class="p-4 flex-1 overflow-y-auto">
                  <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div class="flex items-center gap-3 mb-3">
-                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                            {{ (typeof selectedCustomer === 'string' ? selectedCustomer : (selectedCustomer.label || selectedCustomer.value || '?'))[0]?.toUpperCase() }}
+                        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold shrink-0">
+                            {{ customerDisplay.initial }}
                         </div>
-                        <div>
-                            <div class="font-bold text-gray-900">
-                                {{ typeof selectedCustomer === 'string' ? selectedCustomer : (selectedCustomer.label || selectedCustomer.value || 'Unknown') }}
+                        <div class="overflow-hidden">
+                            <div class="font-bold text-gray-900 truncate" :title="customerDisplay.name">
+                                {{ customerDisplay.name }}
                             </div>
-                            <div class="text-xs text-list-500">
-                                {{ typeof selectedCustomer === 'string' ? __('Please select from list') : selectedCustomer.value }}
+                            <div class="text-xs text-gray-500 font-mono">
+                                {{ customerDisplay.code }}
                             </div>
-                            <div v-if="typeof selectedCustomer !== 'string' && selectedCustomer.mobile" class="text-xs text-gray-400 mt-1">
-                                {{ selectedCustomer.mobile }}
+                            <div v-if="customerDisplay.mobile" class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                                {{ customerDisplay.mobile }}
                             </div>
                         </div>
                     </div>
@@ -307,6 +308,44 @@ const paymentModes = [
 paymentModes.forEach(m => payments.value[m.name] = 0)
 
 const currencySymbol = computed(() => props.currency)
+
+// Resolve customer details for display
+const customerDisplay = computed(() => {
+    const val = selectedCustomer.value
+    if (!val) return { name: '', code: '', mobile: '', initial: '?' }
+
+    // If val is object (created manually or direct set)
+    if (typeof val === 'object' && val !== null) {
+        return {
+            name: val.label || val.customer_name || 'Unknown',
+            code: val.value || val.name || '',
+            mobile: val.mobile || val.mobile_no || '',
+            initial: (val.label || val.customer_name || '?')[0]?.toUpperCase()
+        }
+    }
+
+    // If val is string (ID), try to find in options
+    if (typeof val === 'string') {
+        const found = customerOptions.value.find(c => c.value === val)
+        if (found) {
+            return {
+                name: found.label,
+                code: found.value,
+                mobile: found.mobile,
+                initial: found.label[0]?.toUpperCase()
+            }
+        }
+        // Fallback if just string and not in list (e.g. typing)
+        return {
+            name: val,
+            code: __('Please select from list'),
+            mobile: '',
+            initial: val[0]?.toUpperCase()
+        }
+    }
+
+    return { name: 'Unknown', code: '', mobile: '', initial: '?' }
+}) 
 
 // Computed logic
 const totalSelectedOutstanding = computed(() => {
