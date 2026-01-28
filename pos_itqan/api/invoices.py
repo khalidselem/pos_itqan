@@ -868,7 +868,7 @@ def create_consolidated_payment_entry(data):
             data = json.loads(data)
 
         customer = data.get("customer")
-        company = data.get("company") or frappe.defaults.get_default("company")
+        company = data.get("company") or frappe.db.get_default("company")
         pos_profile = data.get("pos_profile")
         payments = data.get("payments", [])     # List of payment modes and amounts
         invoices = data.get("invoices", [])     # List of invoices to allocate against
