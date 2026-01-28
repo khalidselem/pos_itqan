@@ -6,7 +6,7 @@
       @click.self="handleClose"
     >
       <div class="fixed inset-0 flex items-center justify-center p-4">
-        <div class="w-full h-full max-w-[95vw] max-h-[95vh] bg-white rounded-lg shadow-2xl overflow-hidden flex flex-col">
+        <div class="w-full h-full max-w-7xl max-h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all">
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-emerald-50 to-teal-50">
             <div class="flex items-center gap-3">
@@ -70,12 +70,18 @@
                  <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                            {{ (selectedCustomer.label || selectedCustomer.value || '?')[0]?.toUpperCase() }}
+                            {{ (typeof selectedCustomer === 'string' ? selectedCustomer : (selectedCustomer.label || selectedCustomer.value || '?'))[0]?.toUpperCase() }}
                         </div>
                         <div>
-                            <div class="font-bold text-gray-900">{{ selectedCustomer.label || selectedCustomer.value || 'Unknown' }}</div>
-                            <div class="text-xs text-gray-500">{{ selectedCustomer.value }}</div>
-                            <div v-if="selectedCustomer.mobile" class="text-xs text-gray-400 mt-1">{{ selectedCustomer.mobile }}</div>
+                            <div class="font-bold text-gray-900">
+                                {{ typeof selectedCustomer === 'string' ? selectedCustomer : (selectedCustomer.label || selectedCustomer.value || 'Unknown') }}
+                            </div>
+                            <div class="text-xs text-list-500">
+                                {{ typeof selectedCustomer === 'string' ? __('Please select from list') : selectedCustomer.value }}
+                            </div>
+                            <div v-if="typeof selectedCustomer !== 'string' && selectedCustomer.mobile" class="text-xs text-gray-400 mt-1">
+                                {{ selectedCustomer.mobile }}
+                            </div>
                         </div>
                     </div>
                  </div>
