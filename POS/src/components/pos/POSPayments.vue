@@ -244,6 +244,7 @@ import { useFormatters } from '@/composables/useFormatters'
 import { useToast } from '@/composables/useToast'
 import { formatCurrency as formatCurrencyUtil } from '@/utils/currency'
 import { call } from "@/utils/apiWrapper"
+import { usePOSShiftStore } from '@/stores/posShift'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -256,6 +257,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
+const shiftStore = usePOSShiftStore()
 const { formatDate } = useFormatters()
 const { showSuccess, showError } = useToast()
 
@@ -297,16 +299,26 @@ function handleCustomerSearch(query) {
     customerResource.reload()
 }
 
-// Payment Modes (Hardcoded for now as per requirement, or fetch from POS Profile)
-const paymentModes = [
-    { name: 'Cash', label: 'Cash' },
-    { name: 'KNET', label: 'KNET' },
-    { name: 'Credit Card', label: 'Visa / MasterCard' }, // Using Credit Card as generic for Visa/Master
-    { name: 'Bank Transfer', label: 'Bank Transfer' }
-]
+// Payment Modes from POS Profile
+const paymentModes = computed(() => {
+    if (shiftStore.currentProfile && shiftStore.currentProfile.payments) {
+        return shiftStore.currentProfile.payments.map(p => ({
+            name: p.mode_of_payment,
+            label: p.mode_of_payment
+        }))
+    }
+    // Fallback if no profile or payments found
+    return []
+})
 
-// Initialize payments object
-paymentModes.forEach(m => payments.value[m.name] = 0)
+// Initialize payments object when modes change or show
+watch(paymentModes, (newModes) => {
+    newModes.forEach(m => {
+        if (payments.value[m.name] === undefined) {
+             payments.value[m.name] = 0
+        }
+    })
+}, { immediate: true })
 
 const currencySymbol = computed(() => props.currency)
 
