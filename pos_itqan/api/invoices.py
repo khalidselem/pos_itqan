@@ -989,6 +989,11 @@ def create_consolidated_payment_entry(data):
                 if not pe.paid_from:
                     frappe.throw(_("Could not find default Receivable Account for Customer or Company"))
             
+            # Set Exchange Rates (Assuming Base Currency for POS for now)
+            # Todo: Handle Multi-currency if needed by fetching from Accounts
+            pe.source_exchange_rate = 1.0
+            pe.target_exchange_rate = 1.0
+            
             # Add References
             for ref in references:
                 pe.append("references", ref)
@@ -1005,7 +1010,14 @@ def create_consolidated_payment_entry(data):
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "POS Payment Creation Error")
-        frappe.throw(_("Failed to create payments: {0}").format(str(e)))
+        # Ensure we capture the real message, especially for ValidationError
+        msg = str(e)
+        if hasattr(e, "message") and e.message:
+            msg = e.message
+        elif hasattr(e, "msg") and e.msg: # Sometimes exceptions have msg attr
+            msg = e.msg
+            
+        frappe.throw(_("Failed to create payments: {0}").format(msg))
 
     try:
         sync_doc = frappe.get_doc("Offline Invoice Sync", sync_record_name)
