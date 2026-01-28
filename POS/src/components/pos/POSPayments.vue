@@ -70,11 +70,12 @@
                  <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                     <div class="flex items-center gap-3 mb-3">
                         <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
-                            {{ selectedCustomer.label?.[0]?.toUpperCase() }}
+                            {{ (selectedCustomer.label || selectedCustomer.value || '?')[0]?.toUpperCase() }}
                         </div>
                         <div>
-                            <div class="font-bold text-gray-900">{{ selectedCustomer.label }}</div>
+                            <div class="font-bold text-gray-900">{{ selectedCustomer.label || selectedCustomer.value || 'Unknown' }}</div>
                             <div class="text-xs text-gray-500">{{ selectedCustomer.value }}</div>
+                            <div v-if="selectedCustomer.mobile" class="text-xs text-gray-400 mt-1">{{ selectedCustomer.mobile }}</div>
                         </div>
                     </div>
                  </div>
@@ -206,6 +207,9 @@
 
                <!-- Footer Actions -->
                <div class="p-4 bg-white border-t border-gray-200">
+                  <div v-if="invoices.length > 0 && selectedInvoices.length === 0" class="text-xs text-orange-600 mb-2 text-center">
+                      {{ __('Select invoices to pay') }}
+                  </div>
                   <Button
                     variant="solid"
                     theme="emerald"
@@ -346,8 +350,11 @@ function toggleInvoice(invoice) {
 
 // Fetch invoices when customer selected
 watch(selectedCustomer, (newVal) => {
-    if (newVal && newVal.value) {
-        fetchUnpaidInvoices(newVal.value)
+    // Handle both object (standard) and potential raw value (edge case)
+    const customerName = newVal?.value || (typeof newVal === 'string' ? newVal : null)
+    
+    if (customerName) {
+        fetchUnpaidInvoices(customerName)
     } else {
         invoices.value = []
         selectedInvoices.value = []
