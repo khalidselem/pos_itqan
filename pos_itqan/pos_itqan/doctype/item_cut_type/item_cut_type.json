@@ -12,7 +12,7 @@
             "fieldname": "cut_type",
             "fieldtype": "Data",
             "in_list_view": 1,
-            "label": "Cut Type",
+            "label": "Add-on",
             "reqd": 1
         }
     ],

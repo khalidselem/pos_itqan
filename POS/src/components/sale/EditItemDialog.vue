@@ -174,7 +174,7 @@
 
 													<!-- Cut Type Selector -->
 													<div v-if="cutTypeOptions.length > 0">
-														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Cut Type') }}</label>
+														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Add-on') }}</label>
 														<SelectInput v-model="localCutType" :options="cutTypeOptions" />
 													</div>
 												</div>
