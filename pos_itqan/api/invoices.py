@@ -968,13 +968,26 @@ def create_consolidated_payment_entry(data):
             
             # Fetch default accounts
             # We can use the helper we already have: get_payment_account
+            # Improvement: Pass pos_profile if available to helper? 
+            # Current helper doesn't support specific profile, but let's check result
             account_info = get_payment_account(mode, company)
             if account_info and account_info.get("account"):
                 pe.paid_to = account_info.get("account")
+            else:
+                frappe.throw(_("Could not find default Account for Mode of Payment: {0}").format(mode))
             
             # Set target account (Receivable)
-            # Should be fetched from Customer or Company default
-            # pe.paid_from = ... (Automatic in Payment Entry save usually)
+            # Explicitly fetch to avoid validation errors if auto-fetch fails
+            if not pe.paid_from:
+                # Try from Customer
+                pe.paid_from = frappe.db.get_value("Customer", customer, "default_receivable_account")
+                
+                # Try from Company
+                if not pe.paid_from:
+                    pe.paid_from = frappe.db.get_value("Company", company, "default_receivable_account")
+                    
+                if not pe.paid_from:
+                    frappe.throw(_("Could not find default Receivable Account for Customer or Company"))
             
             # Add References
             for ref in references:
