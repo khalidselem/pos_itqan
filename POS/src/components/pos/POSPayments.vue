@@ -218,7 +218,7 @@
                   </div>
                   <Button
                     variant="solid"
-                    theme="emerald"
+                    theme="gray"
                     size="lg"
                     class="w-full justify-center font-bold text-base py-3"
                     :loading="submitting"
