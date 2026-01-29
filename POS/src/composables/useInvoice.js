@@ -29,6 +29,7 @@ export function useInvoice() {
 	const couponCode = ref(null)
 	const taxRules = ref([]) // Tax rules from POS Profile
 	const taxInclusive = ref(false) // Tax inclusive setting from POS Settings
+	const currentTable = ref(null) // Assigned restaurant table
 
 	// Submission state - prevents duplicate submissions
 	const isSubmitting = ref(false)
@@ -739,6 +740,7 @@ export function useInvoice() {
 			})),
 			discount_amount: additionalDiscount.value || 0,
 			coupon_code: couponCode.value,
+			custom_pos_table: currentTable.value,
 			is_pos: 1,
 			update_stock: 1,
 		}
@@ -793,6 +795,7 @@ export function useInvoice() {
 					})),
 					discount_amount: additionalDiscount.value || 0,
 					coupon_code: couponCode.value,
+					custom_pos_table: currentTable.value,
 					is_pos: 1,
 					update_stock: 1, // Critical: Ensures stock is updated
 				}
@@ -1052,6 +1055,7 @@ export function useInvoice() {
 		couponCode,
 		taxRules,
 		taxInclusive,
+		currentTable,
 		isSubmitting,
 
 		// Computed

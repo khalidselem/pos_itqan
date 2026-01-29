@@ -105,6 +105,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		removeDiscount,
 		applyOffersResource,
 		getItemDetailsResource,
+		currentTable,
 		recalculateItem,
 		rebuildIncrementalCache,
 		formatItemsForSubmission,
@@ -226,6 +227,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		appliedOffers.value = []
 		appliedCoupon.value = null
 		currentDraftId.value = null
+		currentTable.value = null
 		targetDoctype.value = "Sales Invoice"
 
 		// Reset offer processing state

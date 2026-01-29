@@ -1,5 +1,6 @@
 import { deleteDraft, getDraftsCount, saveDraft, getAllDrafts, updateDraft } from "@/utils/draftManager"
 import { useToast } from "@/composables/useToast"
+import { call } from "@/utils/apiWrapper"
 import { defineStore } from "pinia"
 import { ref } from "vue"
 
@@ -35,6 +36,7 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 		posProfile,
 		appliedOffers = [],
 		draftId = null,
+		table = null,
 	) {
 		if (invoiceItems.length === 0) {
 			showWarning(__("Cannot save an empty cart as draft"))
@@ -47,6 +49,7 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 				customer: customer,
 				items: invoiceItems,
 				applied_offers: appliedOffers, // Save applied offers
+				table: table,
 			}
 
 			let savedDraft
@@ -54,6 +57,20 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 				savedDraft = await updateDraft(draftId, draftData)
 			} else {
 				savedDraft = await saveDraft(draftData)
+			}
+
+			// Sync table status if table is assigned
+			if (table) {
+				try {
+					await call("pos_itqan.api.tables.update_table_status", {
+						table: table,
+						status: "Occupied",
+						current_order: savedDraft.draft_id,
+						current_customer: customer?.customer_name || customer?.name || customer,
+					})
+				} catch (e) {
+					console.error("Failed to sync table status:", e)
+				}
 			}
 
 			await loadDrafts() // Refresh drafts list and count
@@ -76,6 +93,7 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 				items: draft.items || [],
 				customer: draft.customer,
 				applied_offers: draft.applied_offers || [], // Restore applied offers
+				table: draft.table,
 			}
 		} catch (error) {
 			console.error("Error loading draft:", error)

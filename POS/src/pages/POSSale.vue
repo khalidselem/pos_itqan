@@ -597,6 +597,13 @@
 				@warehouse-changed="handleWarehouseChanged"
 			/>
 
+			<!-- Restaurant Tables -->
+			<POSTables 
+				v-if="uiStore.showTablesDialog" 
+				@close="uiStore.showTablesDialog = false" 
+				@table-selected="handleTableSelected" 
+			/>
+
 			<!-- Stock Lookup Dialog (Products Menu) -->
 			<WarehouseAvailabilityDialog
 				v-model="showStockLookup"
@@ -962,6 +969,7 @@ import PromotionManagement from "@/components/sale/PromotionManagement.vue";
 import ReturnInvoiceDialog from "@/components/sale/ReturnInvoiceDialog.vue";
 import WarehouseAvailabilityDialog from "@/components/sale/WarehouseAvailabilityDialog.vue";
 import POSSettings from "@/components/settings/POSSettings.vue";
+import POSTables from "@/components/pos/POSTables.vue";
 import POSPayments from "@/components/pos/POSPayments.vue"
 import InvoiceManagement from "@/components/invoices/InvoiceManagement.vue";
 import InvoiceFilters from "@/components/invoices/InvoiceFilters.vue";
@@ -1883,9 +1891,19 @@ async function handlePaymentCompleted(paymentData) {
 				paymentData.paid_amount
 			);
 			uiStore.showPaymentDialog = false;
+			const tableToRelease = cartStore.currentTable;
 			cartStore.clearCart();
 			// Reset cart hash after successful payment
 			previousCartHash = "";
+
+			if (tableToRelease) {
+				call("pos_itqan.api.tables.update_table_status", {
+					table: tableToRelease,
+					status: "Available",
+					current_order: null,
+					current_customer: null
+				}).catch(e => console.error("Failed to release table:", e));
+			}
 
 			// Delete draft after successful save
 			if (draftIdToDelete) {
@@ -1904,10 +1922,21 @@ async function handlePaymentCompleted(paymentData) {
 				const invoiceTotal = result.grand_total || result.total || 0;
 				const paidAmount = paymentData.paid_amount || invoiceTotal;
 
+				const tableToRelease = cartStore.currentTable;
+
 				uiStore.showPaymentDialog = false;
 				cartStore.clearCart();
 				// Reset cart hash after successful payment
 				previousCartHash = "";
+
+				if (tableToRelease) {
+					call("pos_itqan.api.tables.update_table_status", {
+						table: tableToRelease,
+						status: "Available",
+						current_order: null,
+						current_customer: null
+					}).catch(e => console.error("Failed to release table:", e));
+				}
 
 				// Delete draft after successful submission
 				if (draftIdToDelete) {
@@ -2087,7 +2116,8 @@ async function handleSaveDraft() {
 		cartStore.customer,
 		cartStore.posProfile,
 		cartStore.appliedOffers,
-		cartStore.currentDraftId
+		cartStore.currentDraftId,
+		cartStore.currentTable
 	);
 	if (savedDraft) {
 		cartStore.clearCart();
@@ -2105,7 +2135,8 @@ async function handleLoadDraft(draft) {
 				cartStore.customer,
 				cartStore.posProfile,
 				cartStore.appliedOffers,
-				cartStore.currentDraftId
+				cartStore.currentDraftId,
+				cartStore.currentTable
 			);
 
 			if (!saved) {
@@ -2123,6 +2154,7 @@ async function handleLoadDraft(draft) {
 		cartStore.invoiceItems = draftData.items;
 		cartStore.setCustomer(draftData.customer);
 		cartStore.currentDraftId = draft.draft_id; // Set current draft ID
+		cartStore.currentTable = draftData.table;
 
 		// Rebuild incremental cache to recalculate totals
 		cartStore.rebuildIncrementalCache();
@@ -2523,7 +2555,43 @@ function handleManagementMenuClick(menuItem) {
 		showPOSPayments.value = true
 	} else if (menuItem === "settings") {
 		showPOSSettings.value = true;
+	} else if (menuItem === "tables") {
+		uiStore.showTablesDialog = true;
 	}
+}
+
+async function handleTableSelected(table) {
+    uiStore.showTablesDialog = false;
+
+    if (table.status === 'Occupied' && table.active_invoice) {
+        // Find the draft for this invoice
+        await draftsStore.loadDrafts();
+        const draft = draftsStore.drafts.find(d => d.invoice_name === table.active_invoice);
+        if (draft) {
+            handleLoadDraft(draft);
+            cartStore.currentTable = table.name;
+        } else {
+            // If no draft found but occupied, might be a direct invoice
+            // Or draft was deleted. Let's start fresh and link it.
+            cartStore.clearCart();
+            cartStore.currentTable = table.name;
+            uiStore.showCustomerDialog = true;
+        }
+    } else {
+        // Start fresh with this table
+        if (!cartStore.isEmpty) {
+            // Save current cart as draft first?
+            showWarning(__("Please clear or save your current cart before opening a new table"));
+            return;
+        }
+        cartStore.clearCart();
+        cartStore.currentTable = table.name;
+        
+        // Open customer selection if none selected
+        if (!cartStore.customer) {
+            uiStore.showCustomerDialog = true;
+        }
+    }
 }
 
 const posPaymentsRef = ref(null)

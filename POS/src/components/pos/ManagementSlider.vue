@@ -86,6 +86,24 @@
 			</div>
 		</button>
 
+		<!-- Tables -->
+		<button
+			v-if="isTableManagementEnabled"
+			@click="handleMenuClick('tables')"
+			:class="[
+				'w-12 h-12 rounded-lg flex items-center justify-center transition-all relative group',
+				activeMenu === 'tables'
+					? 'bg-amber-100 text-amber-600'
+					: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+			]"
+			:title="__('Tables')"
+		>
+			<FeatherIcon name="grid" class="w-5 h-5" />
+			<div class="absolute start-full ms-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+				{{ __('Restaurant Tables') }}
+			</div>
+		</button>
+
 		<!-- Payments -->
 		<button
 			@click="handleMenuClick('payments')"
@@ -127,9 +145,16 @@
 
 <script setup>
 import { FeatherIcon } from "frappe-ui"
-import { ref } from "vue"
+import { usePOSShiftStore } from "@/stores/posShift"
+import { ref, computed } from "vue"
 
 const emit = defineEmits(["menu-clicked"])
+const shiftStore = usePOSShiftStore()
+
+const isTableManagementEnabled = computed(() => {
+	// Check custom field in POS Profile
+	return !!shiftStore.currentProfile?.custom_enable_table_management
+})
 
 const activeMenu = ref("")
 

@@ -124,6 +124,28 @@
 							</div>
 						</div>
 
+						<!-- Table Indicator Card -->
+						<div
+							v-if="cartStore.currentTable"
+							class="flex items-center gap-2 bg-gradient-to-br from-amber-500 to-orange-600 border border-orange-400 rounded-xl px-3 py-1.5 shadow-sm text-white flex-shrink-0"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+							</svg>
+							<div class="flex flex-col">
+								<span class="text-[8px] font-bold uppercase tracking-wider opacity-80 leading-none mb-0.5">{{ __("Table") }}</span>
+								<span class="text-xs font-black leading-none">{{ cartStore.currentTable }}</span>
+							</div>
+							<button 
+								@click="cartStore.currentTable = null"
+								class="ms-1 p-0.5 hover:bg-white/20 rounded-md transition-colors"
+							>
+								<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+
 						<!-- Document Type Card -->
 						<div
 							v-if="settingsStore.allowSalesOrder"

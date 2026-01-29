@@ -103,7 +103,16 @@ fixtures = [
 					"POS Profile-posa_block_sale_beyond_available_qty",
 					"Mode of Payment-is_wallet_payment",
 					"Item-cut_types",
-					"Sales Invoice Item-custom_cut_type"
+					"Sales Invoice Item-custom_cut_type",
+					"Sales Invoice-custom_pos_table",
+					"POS Profile-custom_enable_table_management",
+					"Customer-custom_area",
+					"Customer-custom_block",
+					"Customer-custom_street",
+					"Customer-custom_jadd",
+					"Customer-custom_house",
+					"Customer-custom_floor",
+					"Customer-custom_apartment"
 				]
 			]
 		]
