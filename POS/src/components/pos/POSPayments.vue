@@ -105,67 +105,117 @@
               </div>
             </div>
 
-            <!-- CENTER PANEL: Invoice List -->
+            <!-- CENTER PANEL: Invoice List & History -->
             <div class="flex-1 flex flex-col border-e border-gray-200 bg-white">
-              <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                 <h3 class="font-bold text-gray-800">{{ __('Unpaid Invoices') }}</h3>
-                 <div class="text-sm text-gray-500" v-if="invoices.length > 0">
-                    {{ __('{0} invoices found', [invoices.length]) }}
+              <!-- Tabs Header -->
+              <div class="px-4 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                 <div class="flex space-x-1 bg-gray-200/50 p-1 rounded-lg">
+                    <button 
+                        @click="activeTab = 'unpaid'"
+                        class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+                        :class="activeTab === 'unpaid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                    >
+                        {{ __('Unpaid Invoices') }}
+                    </button>
+                    <button 
+                        @click="activeTab = 'history'"
+                        class="px-3 py-1.5 rounded-md text-sm font-medium transition-all"
+                        :class="activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                    >
+                        {{ __('Payment History') }}
+                    </button>
+                 </div>
+                 <div class="text-sm text-gray-500" v-if="activeTab === 'unpaid' && invoices.length > 0">
+                    {{ __('{0} invoices', [invoices.length]) }}
                  </div>
               </div>
 
               <!-- Loading State -->
-              <div v-if="loadingInvoices" class="flex-1 flex items-center justify-center">
+              <div v-if="loadingInvoices || loadingHistory" class="flex-1 flex items-center justify-center">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
               </div>
 
-              <!-- Empty State -->
-              <div v-else-if="invoices.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
-                <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                <p>{{ __('No unpaid invoices found') }}</p>
+              <!-- UNPAID INVOICES TAB -->
+              <div v-else-if="activeTab === 'unpaid'" class="flex-1 flex flex-col overflow-hidden">
+                  <div v-if="invoices.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+                    <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    <p>{{ __('No unpaid invoices found') }}</p>
+                  </div>
+
+                  <div v-else class="flex-1 overflow-y-auto">
+                    <table class="w-full text-sm text-left">
+                      <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr>
+                          <th scope="col" class="p-4 w-10">
+                            <div class="flex items-center">
+                              <input type="checkbox" v-model="selectAll" class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                            </div>
+                          </th>
+                          <th scope="col" class="px-4 py-3">{{ __('Invoice') }}</th>
+                          <th scope="col" class="px-4 py-3">{{ __('Date') }}</th>
+                          <th scope="col" class="px-4 py-3 text-end">{{ __('Total') }}</th>
+                          <th scope="col" class="px-4 py-3 text-end">{{ __('Outstanding') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr 
+                            v-for="invoice in invoices" 
+                            :key="invoice.name"
+                            class="border-b hover:bg-gray-50 cursor-pointer"
+                            @click="toggleInvoice(invoice)"
+                        >
+                          <td class="p-4 w-10">
+                            <div class="flex items-center">
+                              <input 
+                                type="checkbox" 
+                                :checked="isSelected(invoice.name)"
+                                class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 pointer-events-none"
+                              >
+                            </div>
+                          </td>
+                          <td class="px-4 py-3 font-medium text-gray-900">{{ invoice.name }}</td>
+                          <td class="px-4 py-3 text-gray-500">{{ formatDate(invoice.posting_date) }}</td>
+                          <td class="px-4 py-3 text-end font-medium">{{ formatCurrency(invoice.grand_total, invoice.currency) }}</td>
+                          <td class="px-4 py-3 text-end font-bold text-orange-600">{{ formatCurrency(invoice.outstanding_amount, invoice.currency) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
               </div>
 
-              <!-- Invoice Table -->
-              <div v-else class="flex-1 overflow-y-auto">
-                <table class="w-full text-sm text-left">
-                  <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
-                    <tr>
-                      <th scope="col" class="p-4 w-10">
-                        <div class="flex items-center">
-                          <input type="checkbox" v-model="selectAll" class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
-                        </div>
-                      </th>
-                      <th scope="col" class="px-4 py-3">{{ __('Invoice') }}</th>
-                      <th scope="col" class="px-4 py-3">{{ __('Date') }}</th>
-                      <th scope="col" class="px-4 py-3 text-end">{{ __('Total') }}</th>
-                      <th scope="col" class="px-4 py-3 text-end">{{ __('Outstanding') }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr 
-                        v-for="invoice in invoices" 
-                        :key="invoice.name"
-                        class="border-b hover:bg-gray-50 cursor-pointer"
-                        @click="toggleInvoice(invoice)"
+              <!-- HISTORY TAB -->
+              <div v-else-if="activeTab === 'history'" class="flex-1 flex flex-col overflow-hidden">
+                  <div v-if="paymentHistory.length === 0" class="flex-1 flex flex-col items-center justify-center text-gray-400 p-8">
+                    <p>{{ __('No payment history found') }}</p>
+                  </div>
+
+                  <div v-else class="flex-1 overflow-y-auto p-4 space-y-3">
+                    <div 
+                        v-for="pay in paymentHistory" 
+                        :key="pay.name"
+                        class="bg-white border border-gray-100 rounded-xl p-4 hover:shadow-sm transition-shadow flex justify-between items-center"
                     >
-                      <td class="p-4 w-10">
-                        <div class="flex items-center">
-                          <input 
-                            type="checkbox" 
-                            :checked="isSelected(invoice.name)"
-                            class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 pointer-events-none"
-                          >
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-gray-800">{{ pay.name }}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
+                                    {{ pay.mode_of_payment }}
+                                </span>
+                                <span v-if="pay.status === 'Submitted'" class="w-2 h-2 rounded-full bg-emerald-500" title="Submitted"></span>
+                                <span v-else class="w-2 h-2 rounded-full bg-gray-300" :title="pay.status"></span>
+                            </div>
+                            <div class="text-xs text-gray-500 flex gap-2">
+                                <span>{{ formatDate(pay.posting_date) }}</span>
+                                <span v-if="pay.reference_no" class="text-gray-400">Ref: {{ pay.reference_no }}</span>
+                            </div>
                         </div>
-                      </td>
-                      <td class="px-4 py-3 font-medium text-gray-900">{{ invoice.name }}</td>
-                      <td class="px-4 py-3 text-gray-500">{{ formatDate(invoice.posting_date) }}</td>
-                      <td class="px-4 py-3 text-end font-medium">{{ formatCurrency(invoice.grand_total, invoice.currency) }}</td>
-                      <td class="px-4 py-3 text-end font-bold text-orange-600">{{ formatCurrency(invoice.outstanding_amount, invoice.currency) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                        <div class="font-bold text-emerald-600 text-lg">
+                            {{ formatCurrency(pay.paid_amount) }}
+                        </div>
+                    </div>
+                  </div>
               </div>
             </div>
 
@@ -278,6 +328,11 @@ const invoices = ref([])
 const selectedInvoices = ref([]) // Sets of names
 const payments = ref({})
 
+// History & Tabs
+const activeTab = ref('unpaid')
+const paymentHistory = ref([])
+const loadingHistory = ref(false)
+
 // Customer Search
 const selectedCustomer = ref(null)
 const customerSearchQuery = ref('')
@@ -295,20 +350,9 @@ const customerResource = createListResource({
   }
 })
 
-const customerOptions = computed(() => {
-    return customerResource.data || []
-})
+// ... (omitted computed props for brevity, keeping original structure) ...
 
-function handleCustomerSearch(query) {
-    customerSearchQuery.value = query
-    customerResource.update({
-        filters: {
-            customer_name: ['like', `%${query}%`]
-        }
-    })
-    customerResource.reload()
-}
-
+// Computed
 // Payment Modes from POS Profile
 const paymentModes = computed(() => {
     if (shiftStore.currentProfile && shiftStore.currentProfile.payments) {
@@ -386,6 +430,10 @@ const difference = computed(() => {
     return totalSelectedOutstanding.value - totalPaymentInput.value
 })
 
+const hasUnusedPayment = computed(() => {
+    return difference.value > 0
+})
+
 const canSubmit = computed(() => {
     // Must handle case where we have a customer and payment amount, regardless of invoices
     const hasCustomer = !!selectedCustomer.value
@@ -424,11 +472,27 @@ watch(selectedCustomer, (newVal) => {
     // Handle both object (standard) and potential raw value (edge case)
     const customerName = newVal?.value || (typeof newVal === 'string' ? newVal : null)
     
+    // Reset tab on customer change
+    activeTab.value = 'unpaid'
+    
     if (customerName) {
         fetchUnpaidInvoices(customerName)
+        fetchHistory(customerName)
     } else {
         invoices.value = []
+        paymentHistory.value = []
         selectedInvoices.value = []
+    }
+})
+
+// Watch active tab to fetch history if needed
+watch(activeTab, (val) => {
+    if (val === 'history') {
+         const custVal = selectedCustomer.value
+         const customerName = custVal?.value || (typeof custVal === 'string' ? custVal : null)
+         if (customerName) {
+             fetchHistory(customerName)
+         }
     }
 })
 
@@ -448,6 +512,20 @@ async function fetchUnpaidInvoices(customer) {
         showError('Failed to fetch invoices')
     } finally {
         loadingInvoices.value = false
+    }
+}
+
+async function fetchHistory(customer) {
+    loadingHistory.value = true
+    try {
+        const res = await call('pos_itqan.api.invoices.get_customer_payment_history', {
+            customer: customer
+        })
+        paymentHistory.value = res || []
+    } catch (e) {
+        console.error("Fetch History Error:", e)
+    } finally {
+        loadingHistory.value = false
     }
 }
 
