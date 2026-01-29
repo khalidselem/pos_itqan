@@ -544,7 +544,19 @@ async function handleSubmit() {
         }
 
         showSuccess(successMsg)
-        handleClose()
+        
+        // Refresh data
+        fetchInvoices()
+        fetchHistory()
+        
+        // Clear inputs
+        payments.value = {}
+        selectedInvoices.value = []
+        
+        // handleClose() - Keep open or close? User usually wants to see the receipt or history. 
+        // Let's keep it open but maybe switch to history tab?
+        activeTab.value = 'history'
+        
     } catch (error) {
         console.error("Payment Submission Error:", error)
         

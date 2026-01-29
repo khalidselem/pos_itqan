@@ -818,6 +818,29 @@ def _complete_offline_sync(sync_record_name, invoice_name):
 
 
 @frappe.whitelist()
+def get_customer_payment_history(customer, limit=50):
+    """
+    Get recent payment entries for a customer.
+    """
+    if not customer:
+        return []
+        
+    payments = frappe.get_all(
+        "Payment Entry",
+        filters={
+            "party_type": "Customer",
+            "party": customer,
+            "docstatus": 1  # Only submitted payments
+        },
+        fields=["name", "posting_date", "paid_amount", "mode_of_payment", "reference_no", "status"],
+        order_by="posting_date desc, creation desc",
+        limit=limit
+    )
+    
+    return payments
+
+
+@frappe.whitelist()
 def get_customer_outstanding_invoices(customer):
     """
     Fetch all unpaid or partially paid POS invoices for a specific customer.
