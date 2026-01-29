@@ -8,21 +8,21 @@
       <div class="fixed inset-0 flex items-center justify-center p-4">
         <div class="w-full h-full max-w-5xl max-h-[85vh] bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col transition-all">
           <!-- Header -->
-          <div class="flex items-center justify-between px-5 py-3 border-b bg-gradient-to-r from-emerald-50 to-teal-50">
-            <div class="flex items-center gap-2">
-              <div class="p-1.5 bg-emerald-100 rounded-lg">
-                <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-emerald-50 to-teal-50">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-emerald-100 rounded-lg">
+                <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <h2 class="text-lg font-bold text-gray-900">{{ __('POS Payments') }}</h2>
-                <p class="text-xs text-gray-600">{{ __('Consolidated payments for POS customers') }}</p>
+                <h2 class="text-xl font-bold text-gray-900">{{ __('POS Payments') }}</h2>
+                <p class="text-sm text-gray-600">{{ __('Consolidated payments for POS customers') }}</p>
               </div>
             </div>
             <button
               @click="handleClose"
-              class="p-1.5 hover:bg-white/50 rounded-lg transition-colors"
+              class="p-2 hover:bg-white/50 rounded-lg transition-colors"
             >
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
