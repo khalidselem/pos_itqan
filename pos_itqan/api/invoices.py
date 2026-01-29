@@ -1030,8 +1030,12 @@ def create_consolidated_payment_entry(data):
 
             # Fix for Bank Transactions: Reference No/Date is mandatory
             # For POS, we often don't have a manual reference, so we auto-generate one.
+            # We apply this for ALL payment modes to ensure consistency and avoid validation errors.
             if not pe.reference_no:
-                pe.reference_no = f"POS-{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S')}-{frappe.utils.random_string(3)}"
+                # Format: POS-MODE-TIMESTAMP-RANDOM
+                # e.g. POS-CASH-20260129123000-ABC
+                safe_mode = str(mode).upper().replace(" ", "")[:5]
+                pe.reference_no = f"POS-{safe_mode}-{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S')}-{frappe.utils.random_string(3)}"
             
             if not pe.reference_date:
                 pe.reference_date = frappe.utils.nowdate()
