@@ -350,7 +350,19 @@ const customerResource = createListResource({
   }
 })
 
-// ... (omitted computed props for brevity, keeping original structure) ...
+const customerOptions = computed(() => {
+    return customerResource.data || []
+})
+
+function handleCustomerSearch(query) {
+    customerSearchQuery.value = query
+    customerResource.update({
+        filters: {
+            customer_name: ['like', `%${query}%`]
+        }
+    })
+    customerResource.reload()
+}
 
 // Computed
 // Payment Modes from POS Profile
