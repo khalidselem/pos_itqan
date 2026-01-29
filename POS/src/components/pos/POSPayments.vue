@@ -528,7 +528,7 @@ async function handleSubmit() {
             }
         })
 
-        await call('pos_itqan.api.invoices.create_consolidated_payment_entry', {
+        const res = await call('pos_itqan.api.invoices.create_consolidated_payment_entry', {
             data: {
                 customer: customerId,
                 // company: inferred by backend
@@ -538,7 +538,12 @@ async function handleSubmit() {
             }
         })
 
-        showSuccess('Payment submitted successfully')
+        let successMsg = 'Payment submitted successfully'
+        if (res && res.payment_entries && res.payment_entries.length > 0) {
+            successMsg += `: ${res.payment_entries.join(', ')}`
+        }
+
+        showSuccess(successMsg)
         handleClose()
     } catch (error) {
         console.error("Payment Submission Error:", error)
