@@ -978,16 +978,23 @@ def create_consolidated_payment_entry(data):
             
             # Set target account (Receivable)
             # Explicitly fetch to avoid validation errors if auto-fetch fails
+            # Set target account (Receivable)
+            # Explicitly fetch to avoid validation errors if auto-fetch fails
             if not pe.paid_from:
-                # Try from Customer
-                pe.paid_from = frappe.db.get_value("Customer", customer, "default_receivable_account")
+                # 1. Try to find the Customer's Account from standard ERPNext link (if exists)
+                # Some systems use 'account' field in Customer, others use Customer Group.
                 
-                # Try from Company
-                if not pe.paid_from:
-                    pe.paid_from = frappe.db.get_value("Company", company, "default_receivable_account")
+                # 2. Try to find a Receivable account for this Company
+                # This is the safest fallback if direct link is missing
+                pe.paid_from = frappe.db.get_value("Account", {
+                    "company": company,
+                    "account_type": "Receivable",
+                    "is_group": 0,
+                    "disabled": 0
+                }, "name")
                     
                 if not pe.paid_from:
-                    frappe.throw(_("Could not find default Receivable Account for Customer or Company"))
+                    frappe.throw(_("Could not find default Receivable Account for Company {0}").format(company))
             
             # Set Exchange Rates (Assuming Base Currency for POS for now)
             # Todo: Handle Multi-currency if needed by fetching from Accounts
