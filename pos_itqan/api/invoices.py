@@ -1027,7 +1027,14 @@ def create_consolidated_payment_entry(data):
             # Add References
             for ref in references:
                 pe.append("references", ref)
+
+            # Fix for Bank Transactions: Reference No/Date is mandatory
+            # For POS, we often don't have a manual reference, so we auto-generate one.
+            if not pe.reference_no:
+                pe.reference_no = f"POS-{frappe.utils.now_datetime().strftime('%Y%m%d%H%M%S')}-{frappe.utils.random_string(3)}"
             
+            if not pe.reference_date:
+                pe.reference_date = frappe.utils.nowdate()
             # Set POS Profile reference if custom field exists (optional)
             if hasattr(pe, "pos_profile"):
                 pe.pos_profile = pos_profile
