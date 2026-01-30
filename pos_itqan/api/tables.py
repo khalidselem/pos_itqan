@@ -7,10 +7,16 @@ def get_tables():
     """Returns all tables with their current status and active order details."""
     # Check if 'orders' field exists (it may not if migrate hasn't been run)
     has_orders_field = frappe.db.has_column("POS Table", "orders")
+    # Check if 'received_at' field exists
+    has_received_at_field = frappe.db.has_column("POS Table", "received_at")
     
-    fields = ["name", "table_name", "zone", "capacity", "status", "current_order", "current_customer", "notes", "received_at"]
+    fields = ["name", "table_name", "zone", "capacity", "status", "current_order", "current_customer", "notes"]
+    
     if has_orders_field:
         fields.append("orders")
+        
+    if has_received_at_field:
+        fields.append("received_at")
     
     tables = frappe.get_all("POS Table", 
         fields=fields,
@@ -37,10 +43,12 @@ def update_table_status(table, status, current_order=None, current_customer=None
     doc.current_customer = current_customer
     
     # Save received_at timestamp when table becomes Occupied or Reserved
-    if status in ["Occupied", "Reserved"]:
-        doc.received_at = frappe.utils.now()
-    elif status == "Available":
-        doc.received_at = None
+    # Only if the field exists in DB
+    if frappe.db.has_column("POS Table", "received_at"):
+        if status in ["Occupied", "Reserved"]:
+            doc.received_at = frappe.utils.now()
+        elif status == "Available":
+            doc.received_at = None
     
     # Clear all orders if requested (e.g., after checkout)
     if clear_all_orders:
