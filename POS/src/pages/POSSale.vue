@@ -2562,28 +2562,39 @@ function handleManagementMenuClick(menuItem) {
 }
 
 async function handleCheckoutTable(table) {
-    // First load the table order (same logic as selecting it)
-    await handleTableSelected(table);
+    const isSameTable = cartStore.currentTable?.name === table.name;
     
-    // If table loaded successfully and has items, trigger payment
+    // If not same table, or if cart is empty, we must load it first
+    if (!isSameTable || cartStore.isEmpty) {
+        await handleTableSelected(table);
+    }
+    
+    // If table loaded successfully and has items (or we already had items for this table), trigger payment
     if (!cartStore.isEmpty) {
-        // Find main proceed payment button to trigger same logic?
-        // Or call handleProceedToPayment directly
         handleProceedToPayment();
     }
 }
 
 async function handleTableSelected(table) {
+    const isSameTable = cartStore.currentTable?.name === table.name;
     uiStore.showTablesDialog = false;
 
     if (table.status === 'Occupied' && (table.current_order || table.active_invoice)) {
+        // If it's the SAME table and we ALREADY have items in cart, we don't want to reload 
+        // the draft from the server because that would overwrite any unsaved changes the user
+        // just made to the cart. 
+        if (isSameTable && !cartStore.isEmpty) {
+            showSuccess(__(`Continued with Table ${table.table_name}`));
+            return;
+        }
+
         // Find the draft for this invoice
         await draftsStore.loadDrafts();
         const invoiceName = table.current_order || table.active_invoice;
         const draft = draftsStore.drafts.find(d => d.invoice_name === invoiceName || d.name === invoiceName);
 
-        // If user already has items in cart that don't belong to this table
-        if (!cartStore.isEmpty && cartStore.currentTable?.name !== table.name) {
+        // If user already has items in cart that don't belong to this table (or it was another table)
+        if (!cartStore.isEmpty && !isSameTable) {
              let action = 'cancel'; // cancel, merge, replace
              
              // Simple confirm for now. 
@@ -2601,24 +2612,18 @@ async function handleTableSelected(table) {
              if (action === 'replace') {
                  cartStore.clearCart();
              }
-             // If merge, we just keep items and they will be appended to the loaded draft?
-             // No, handleLoadDraft replaces the cart. 
-             // We need to buffer current items, load draft, then append buffer.
+             // If merge, we buffer current items, load draft, then append buffer.
         }
 
         if (draft) {
-             const currentItems = !cartStore.isEmpty && cartStore.currentTable?.name !== table.name ? [...cartStore.items] : [];
+             const currentItems = !cartStore.isEmpty && !isSameTable ? [...cartStore.invoiceItems] : [];
             
-            handleLoadDraft(draft);
+            await handleLoadDraft(draft);
             cartStore.currentTable = { name: table.name, table_name: table.table_name };
             
             if (currentItems.length > 0) {
-                // Determine if we should append or merge quantities?
-                // For simplicity, just append. The cart logic might handle duplicates if designed well,
-                // otherwise they appear as separate lines which is also fine.
-                // handleLoadDraft sets items. We push to it.
                 currentItems.forEach(item => {
-                    cartStore.addItem(item);
+                    cartStore.addItem(item, item.quantity || item.qty || 1, true, shiftStore.currentProfile);
                 });
                 showSuccess(__("Items added to table order"));
             }
