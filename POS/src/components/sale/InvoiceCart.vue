@@ -134,7 +134,9 @@
 							</svg>
 							<div class="flex flex-col">
 								<span class="text-[8px] font-bold uppercase tracking-wider opacity-80 leading-none mb-0.5">{{ __("Table") }}</span>
-								<span class="text-xs font-black leading-none">{{ cartStore.currentTable }}</span>
+								<span class="text-xs font-black leading-none max-w-[100px] truncate" :title="cartStore.currentTable.table_name || cartStore.currentTable">
+									{{ cartStore.currentTable.table_name || cartStore.currentTable }}
+								</span>
 							</div>
 							<button 
 								@click="cartStore.currentTable = null"

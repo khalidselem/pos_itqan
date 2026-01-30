@@ -61,9 +61,10 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 
 			// Sync table status if table is assigned
 			if (table) {
+				const tableName = table.name || table; // Handle object or string
 				try {
 					await call("pos_itqan.api.tables.update_table_status", {
-						table: table,
+						table: tableName,
 						status: "Occupied",
 						current_order: savedDraft.draft_id,
 						current_customer: customer?.customer_name || customer?.name || customer,

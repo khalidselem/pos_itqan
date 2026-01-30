@@ -2588,18 +2588,18 @@ async function handleTableSelected(table) {
         
         if (draft) {
             handleLoadDraft(draft);
-            cartStore.currentTable = table.name;
+            cartStore.currentTable = { name: table.name, table_name: table.table_name };
         } else {
             // If no draft found but occupied, might be a direct invoice
             // Or draft was deleted. Let's start fresh and link it.
             cartStore.clearCart();
-            cartStore.currentTable = table.name;
+            cartStore.currentTable = { name: table.name, table_name: table.table_name };
             uiStore.showCustomerDialog = true;
         }
     } else {
         // Table is Available or Reserved (but we can override reserve)
         // If we have items in cart, we just assign them to this table
-        cartStore.currentTable = table.name;
+        cartStore.currentTable = { name: table.name, table_name: table.table_name };
         
         // If cart was empty, maybe prompt for customer?
         if (cartStore.isEmpty && !cartStore.customer) {

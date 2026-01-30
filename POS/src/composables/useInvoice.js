@@ -29,7 +29,7 @@ export function useInvoice() {
 	const couponCode = ref(null)
 	const taxRules = ref([]) // Tax rules from POS Profile
 	const taxInclusive = ref(false) // Tax inclusive setting from POS Settings
-	const currentTable = ref(null) // Assigned restaurant table
+	const currentTable = ref(null) // Assigned restaurant table (object with name, table_name)
 
 	// Submission state - prevents duplicate submissions
 	const isSubmitting = ref(false)
