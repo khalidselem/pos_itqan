@@ -180,6 +180,17 @@
 												</div>
 											</div>
 
+											<!-- Item Notes Section -->
+											<div class="border-t border-gray-200 pt-4">
+												<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Notes') }}</label>
+												<textarea
+													v-model="localNotes"
+													rows="2"
+													:placeholder="__('Special instructions (e.g., No onions, extra cheese...)')"
+													class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+												></textarea>
+											</div>
+
 											<!-- Serial Numbers Section (only for serial items) -->
 											<div v-if="localItem?.has_serial_no && localSerials.length > 0" class="border-t border-gray-200 pt-4">
 												<div class="flex items-center justify-between mb-3">
@@ -326,6 +337,7 @@ const localUom = ref("")
 const localRate = ref(0)
 const localWarehouse = ref("")
 const localCutType = ref("")
+const localNotes = ref("")
 const discountType = ref("percentage")
 const discountValue = ref(0)
 const calculatedSubtotal = ref(0)
@@ -398,6 +410,7 @@ watch(
 			localWarehouse.value =
 				newItem.warehouse || props.warehouses[0]?.name || ""
 			localCutType.value = newItem.custom_cut_type || ""
+			localNotes.value = newItem.notes || newItem.custom_notes || ""
 
 			// Initialize serial numbers
 			if (newItem.has_serial_no && newItem.serial_no) {
@@ -612,6 +625,7 @@ function updateItem() {
 		rate: localRate.value,
 		warehouse: localWarehouse.value,
 		custom_cut_type: localCutType.value,
+		notes: localNotes.value,
 		discount_percentage:
 			discountType.value === "percentage" ? discountValue.value : 0,
 		discount_amount:

@@ -565,6 +565,12 @@ def update_invoice(data):
         if doctype == "Sales Invoice":
             invoice_doc.is_pos = 1
             invoice_doc.update_stock = 1
+            
+            # Set restaurant table name if provided (for table orders)
+            # Frontend sends as custom_pos_table, also accept custom_table or table_name
+            table_name = data.get("custom_pos_table") or data.get("custom_table") or data.get("table_name")
+            if table_name:
+                invoice_doc.custom_table = table_name
 
         # ========================================================================
         # ROUNDING CONFIGURATION

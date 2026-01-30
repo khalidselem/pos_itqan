@@ -56,10 +56,14 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date(), is
     const itemsHTML = items.map(item => {
         const qty = item.quantity || item.qty || 1;
         const name = item.item_name || item.item_code;
+        const notes = item.notes || '';
         return `
             <tr>
-                <td style="font-size: 18px; font-weight: bold; padding: 4px 8px;">${qty}x</td>
-                <td style="font-size: 16px; padding: 4px 8px;">${name}</td>
+                <td style="font-size: 18px; font-weight: bold; padding: 4px 8px; vertical-align: top;">${qty}x</td>
+                <td style="font-size: 16px; padding: 4px 8px;">
+                    ${name}
+                    ${notes ? `<div style="font-size: 12px; font-style: italic; color: #555; margin-top: 2px;">📝 ${notes}</div>` : ''}
+                </td>
             </tr>
         `;
     }).join('');
