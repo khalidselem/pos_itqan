@@ -173,6 +173,18 @@
                                 </svg>
                                 {{ __('Reserve') }}
                             </button>
+                            <!-- Receive Button (Seat Customer) -->
+                            <button 
+                                v-if="table.status === 'Available'"
+                                @click="openReceiveModal(table, $event)"
+                                class="p-1 px-2 flex items-center gap-1 text-[9px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors border border-green-200"
+                                :title="__('Receive Table')"
+                            >
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {{ __('Receive') }}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -393,17 +405,20 @@
         </div>
     </div>
   </div>
-    <!-- Inline Customer Selection Modal for Reservation (z-[600] to appear above tables modal z-[500]) -->
+    <!-- Inline Customer Selection Modal for Reservation/Receive (z-[600] to appear above tables modal z-[500]) -->
     <div v-if="showCustomerDialog" class="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="closeCustomerDialog">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up border border-gray-100">
-            <!-- Header -->
-            <div class="px-5 py-3 border-b bg-amber-50 flex items-center justify-between">
+            <!-- Header - Dynamic based on mode -->
+            <div class="px-5 py-3 border-b flex items-center justify-between" :class="customerDialogMode === 'receive' ? 'bg-green-50' : 'bg-amber-50'">
                 <div>
                     <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg v-if="customerDialogMode === 'receive'" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <svg v-else class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        {{ __('Reserve Table') }}
+                        {{ customerDialogMode === 'receive' ? __('Receive Table') : __('Reserve Table') }}
                     </h3>
                     <p class="text-xs text-gray-500">{{ tableToReserve?.table_name }} - {{ __('Select Customer') }}</p>
                 </div>
@@ -422,7 +437,8 @@
                         v-model="customerSearchTerm"
                         type="text"
                         :placeholder="__('Search customers by name or mobile...')"
-                        class="w-full ps-9 pe-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        class="w-full ps-9 pe-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:border-transparent"
+                        :class="customerDialogMode === 'receive' ? 'focus:ring-green-500' : 'focus:ring-amber-500'"
                         @input="searchCustomers"
                         autofocus
                     />
@@ -504,9 +520,10 @@ const currentTableDrafts = ref([])
 const showPrintModal = ref(false)
 const selectedPrintItems = ref([]) // Array of uniqueIds
 
-// Reservation state - inline customer selection
+// Reservation/Receive state - inline customer selection
 const showCustomerDialog = ref(false)
 const tableToReserve = ref(null)
+const customerDialogMode = ref('reserve') // 'reserve' or 'receive'
 const customerSearchTerm = ref('')
 const allCustomersList = ref([])
 const loadingCustomers = ref(false)
@@ -526,6 +543,20 @@ const filteredCustomersList = computed(() => {
 const openReserveModal = async (table, event) => {
     event.stopPropagation()
     tableToReserve.value = table
+    customerDialogMode.value = 'reserve'
+    customerSearchTerm.value = ''
+    showCustomerDialog.value = true
+    
+    // Load customers if not already loaded
+    if (allCustomersList.value.length === 0) {
+        await loadCustomersList()
+    }
+}
+
+const openReceiveModal = async (table, event) => {
+    event.stopPropagation()
+    tableToReserve.value = table
+    customerDialogMode.value = 'receive'
     customerSearchTerm.value = ''
     showCustomerDialog.value = true
     
@@ -566,12 +597,15 @@ const closeCustomerDialog = () => {
 const selectCustomerForReservation = async (customer) => {
     if (!tableToReserve.value) return
     
+    // Determine target status based on mode
+    const targetStatus = customerDialogMode.value === 'receive' ? 'Occupied' : 'Reserved'
+    
     try {
         await call('frappe.client.set_value', {
             doctype: 'Restaurant Table',
             name: tableToReserve.value.name,
             fieldname: {
-                status: 'Reserved',
+                status: targetStatus,
                 current_customer: customer.name // Use ID (name) of customer
             }
         })
@@ -580,7 +614,7 @@ const selectCustomerForReservation = async (customer) => {
         await fetchData()
         
     } catch (e) {
-        console.error('Failed to reserve table:', e)
+        console.error(`Failed to ${customerDialogMode.value} table:`, e)
     } finally {
         closeCustomerDialog()
     }
