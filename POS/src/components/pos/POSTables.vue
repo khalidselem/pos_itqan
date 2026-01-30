@@ -67,10 +67,10 @@
                 @click="selectedStatus = selectedStatus === 'Available' ? 'All' : 'Available'"
                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95"
                 :class="selectedStatus === 'Available' 
-                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md transform scale-105' 
-                    : 'bg-white border-emerald-200 text-gray-600 hover:border-emerald-400 hover:bg-emerald-50'"
+                    ? 'bg-blue-500 border-blue-500 text-white shadow-md transform scale-105' 
+                    : 'bg-white border-blue-200 text-gray-600 hover:border-blue-400 hover:bg-blue-50'"
             >
-                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'Available' ? 'bg-white' : 'bg-emerald-500'"></span>
+                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'Available' ? 'bg-white' : 'bg-blue-500'"></span>
                 <span class="text-[10px] font-bold">{{ __('Available') }} ({{ statusCounts.Available }})</span>
             </button>
 
@@ -521,7 +521,7 @@ const statusCounts = computed(() => {
 
 const getStatusClasses = (status) => {
     switch (status) {
-        case 'Available': return 'bg-white border-emerald-100 text-emerald-700'
+        case 'Available': return 'bg-white border-blue-100 text-blue-700'
         case 'Occupied': return 'bg-white border-red-200 shadow-sm'
         case 'Reserved': return 'bg-orange-50 border-orange-200 text-orange-700'
         case 'Disabled': return 'bg-gray-100 border-gray-200 text-gray-400 grayscale'
