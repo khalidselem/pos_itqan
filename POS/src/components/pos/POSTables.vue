@@ -148,7 +148,7 @@
                             </span>
                             <span v-else class="text-[9px] truncate opacity-60">{{ table.current_order }}</span>
                             <!-- Edit indicator -->
-                            <span v-if="getTableHasEditedOrders(table)" class="text-amber-600 flex items-center" :title="__('Order modified')">
+                            <span v-if="getTableHasEditedOrders(table)" class="text-red-600 flex items-center" :title="__('Order modified')">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                 </svg>
@@ -202,7 +202,7 @@
                     <div class="flex items-center gap-2">
                         <h3 class="text-base font-bold text-gray-900">{{ selectedTableOrder.tableName }}</h3>
                         <!-- Edit indicator badge -->
-                        <span v-if="selectedTableOrder.isEdited" class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full flex items-center gap-1">
+                        <span v-if="selectedTableOrder.isEdited" class="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-bold rounded-full flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
                                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                             </svg>
@@ -215,7 +215,7 @@
                     </div>
                     <p class="text-xs text-gray-500">{{ selectedTableOrder.customer || __('No Customer') }}</p>
                     <!-- Timestamps -->
-                    <div v-if="selectedTableOrder.createdAt" class="text-[9px] text-gray-400 mt-0.5">
+                    <div v-if="selectedTableOrder.createdAt" class="text-[9px] text-red-500 mt-0.5">
                         {{ __('Created') }}: {{ formatTime(selectedTableOrder.createdAt) }}
                         <span v-if="selectedTableOrder.lastEditedAt" class="ms-2">
                             • {{ __('Edited') }}: {{ formatTime(selectedTableOrder.lastEditedAt) }}

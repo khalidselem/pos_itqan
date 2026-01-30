@@ -280,7 +280,7 @@ const customerData = ref({
 	customer_name: "",
 	mobile_no: "",
 	email_id: "",
-	customer_group: "Individual",
+	customer_group: "تجاري",
 	territory: "All Territories",
 	// Custom Address Fields
 	custom_area: "",
@@ -532,7 +532,7 @@ const resetForm = () => {
 		customer_name: "",
 		mobile_no: "",
 		email_id: "",
-		customer_group: "Individual",
+		customer_group: "تجاري",
 		territory: "All Territories",
 		custom_area: "",
 		custom_house: "",
