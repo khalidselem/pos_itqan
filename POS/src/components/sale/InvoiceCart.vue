@@ -1110,15 +1110,14 @@
 				</div>
 			</div>
 
-			<!-- Action Buttons -->
-			<div class="flex gap-1.5">
+			<div class="flex gap-1">
 				<!-- Checkout Button (Primary - 50% width) -->
 				<button
 					type="button"
 					@click="handleProceedToPayment"
 					:disabled="items.length === 0"
 					:class="[
-						'flex-1 py-2.5 px-3 rounded-lg font-bold text-xs text-white transition-all flex items-center justify-center touch-manipulation',
+						'flex-1 py-2 px-2 rounded-lg font-bold text-[11px] text-white transition-all flex items-center justify-center touch-manipulation',
 						items.length === 0
 							? 'bg-gray-300 cursor-not-allowed'
 							: 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-lg hover:shadow-xl active:scale-[0.98]',
@@ -1126,7 +1125,7 @@
 					:aria-label="__('Proceed to payment')"
 				>
 					<svg
-						class="w-4 h-4 me-1.5"
+						class="w-3.5 h-3.5 me-1"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -1147,7 +1146,7 @@
 					v-if="items.length > 0"
 					@click="$emit('save-draft')"
 					:class="[
-						'flex-1 py-2.5 px-2 rounded-lg font-semibold text-xs transition-all touch-manipulation active:scale-[0.98] flex items-center justify-center',
+						'flex-1 py-2 px-1.5 rounded-lg font-semibold text-[11px] transition-all touch-manipulation active:scale-[0.98] flex items-center justify-center',
 						cartStore.currentTable 
 							? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-md' 
 							: 'text-orange-700 bg-orange-50 hover:bg-orange-100 active:bg-orange-200'
@@ -1155,11 +1154,11 @@
 					:aria-label="cartStore.currentTable ? __('Place Order to Table') : __('Hold order as draft')"
 				>
 					<!-- Icon for Place Order -->
-					<svg v-if="cartStore.currentTable" class="w-4 h-4 me-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg v-if="cartStore.currentTable" class="w-3.5 h-3.5 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
 					</svg>
 					<!-- Icon for Hold -->
-					<svg v-else class="w-4 h-4 me-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<svg v-else class="w-3.5 h-3.5 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
 					</svg>
 					<span>{{ cartStore.currentTable ? __('Place Order') : __("Hold") }}</span>

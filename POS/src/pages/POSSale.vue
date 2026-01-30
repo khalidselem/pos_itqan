@@ -2655,8 +2655,8 @@ async function handleTableSelected(table) {
                 // Buffer current items if merging
                 const currentItems = !cartStore.isEmpty && !isSameTable ? [...cartStore.invoiceItems] : [];
                 
-                // Load the first/most recent draft
-                const primaryDraft = tableDrafts[0];
+                // Load the last/most recent draft (drafts are ordered by creation)
+                const primaryDraft = tableDrafts[tableDrafts.length - 1];
                 await handleLoadDraft(primaryDraft);
                 cartStore.currentTable = { name: table.name, table_name: table.table_name };
                 

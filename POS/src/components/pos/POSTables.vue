@@ -184,17 +184,17 @@
                     <span>{{ __('Total') }}</span>
                     <span class="text-emerald-600">{{ formatCurrency(selectedTableOrder.total) }}</span>
                 </div>
-                <div class="grid grid-cols-3 gap-3">
-                    <button @click="closeDetailsModal" class="px-3 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors">
+                <div class="grid grid-cols-3 gap-2">
+                    <button @click="closeDetailsModal" class="px-2 py-2 bg-white border border-gray-300 text-gray-700 font-semibold text-[11px] rounded-xl hover:bg-gray-50 transition-colors">
                         {{ __('Close') }}
                     </button>
-                    <button @click="submitOrderFromDetails" class="px-3 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                    <button @click="submitOrderFromDetails" class="px-2 py-2 bg-blue-600 text-white font-semibold text-[11px] rounded-xl hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-1.5">
                         <span>{{ __('Open Order') }}</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm-3 8c-7 0-9-5-9-5s2-5 9-5 9 5 9 5-2 5-9 5z" /></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm-3 8c-7 0-9-5-9-5s2-5 9-5 9 5 9 5-2 5-9 5z" /></svg>
                     </button>
-                    <button @click="checkoutFromDetails" class="px-3 py-2.5 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                    <button @click="checkoutFromDetails" class="px-2 py-2 bg-green-600 text-white font-semibold text-[11px] rounded-xl hover:bg-green-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-1.5">
                         <span>{{ __('Checkout') }}</span>
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     </button>
                 </div>
             </div>

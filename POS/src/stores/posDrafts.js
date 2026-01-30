@@ -1,6 +1,7 @@
 import { deleteDraft, getDraftsCount, saveDraft, getAllDrafts, updateDraft } from "@/utils/draftManager"
 import { useToast } from "@/composables/useToast"
 import { call } from "@/utils/apiWrapper"
+import { printKitchenOrder } from "@/utils/kitchenPrint"
 import { defineStore } from "pinia"
 import { ref } from "vue"
 
@@ -92,6 +93,19 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 			await loadDrafts() // Refresh drafts list and count
 
 			showSuccess(__("Invoice saved as draft successfully"))
+
+			// Auto-print kitchen order if table is assigned
+			if (table) {
+				const tableDisplayName = table.table_name || table.name || table
+				try {
+					printKitchenOrder({
+						tableName: tableDisplayName,
+						items: invoiceItems
+					})
+				} catch (e) {
+					console.error('Kitchen print failed:', e)
+				}
+			}
 
 			return savedDraft
 		} catch (error) {
