@@ -141,6 +141,10 @@
                         <div class="text-xs font-bold truncate">
                             {{ getTableCustomerName(table) }}
                         </div>
+                        <!-- Received time -->
+                        <div v-if="table.received_at" class="text-[8px] opacity-60">
+                            🕐 {{ formatReceivedTime(table.received_at) }}
+                        </div>
                         <!-- Order info + edit indicator -->
                         <div class="flex items-center gap-1.5 mt-0.5">
                             <span v-if="getTableOrderCount(table) > 1" class="px-1 py-0.5 bg-blue-500 text-white text-[8px] font-bold rounded-full">
@@ -755,6 +759,32 @@ const formatTime = (isoString) => {
         minute: '2-digit',
         hour12: false
     })
+}
+
+/**
+ * Format ISO timestamp to readable date and time for received tables
+ */
+const formatReceivedTime = (isoString) => {
+    if (!isoString) return ''
+    const date = new Date(isoString)
+    const now = new Date()
+    const isToday = date.toDateString() === now.toDateString()
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    })
+    
+    if (isToday) {
+        return timeStr
+    }
+    
+    const dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+    })
+    return `${dateStr} ${timeStr}`
 }
 
 /**
