@@ -313,13 +313,39 @@ const onTableClick = (table) => {
 const viewOrder = (table, event) => {
     event.stopPropagation() // Prevent selecting table immediately
     
-    // Find the draft for this table
-    const draftId = table.current_order
-    const draft = draftsStore.drafts.find(d => d.name === draftId || d.draft_id === draftId || d.invoice_name === draftId)
+    // Find ALL drafts for this table (not just the first one)
+    const tableDrafts = draftsStore.getDraftsForTable(table.name)
     
-    if (draft) {
-        // Calculate total
-        const total = (draft.items || []).reduce((sum, item) => {
+    // Fallback to single draft lookup if getDraftsForTable returns empty but current_order exists
+    if (tableDrafts.length === 0 && table.current_order) {
+        const draftId = table.current_order
+        const draft = draftsStore.drafts.find(d => d.name === draftId || d.draft_id === draftId || d.invoice_name === draftId)
+        if (draft) {
+            tableDrafts.push(draft)
+        }
+    }
+    
+    if (tableDrafts.length > 0) {
+        // Aggregate items from ALL drafts
+        const allItems = []
+        let customer = null
+        
+        for (const draft of tableDrafts) {
+            const items = draft.items || []
+            for (const item of items) {
+                allItems.push({
+                    ...item,
+                    _draftId: draft.draft_id // Track which draft this item came from
+                })
+            }
+            // Use customer from first draft
+            if (!customer) {
+                customer = draft.customer_name || draft.customer || table.current_customer
+            }
+        }
+        
+        // Calculate total from all items
+        const total = allItems.reduce((sum, item) => {
             const qty = item.qty || item.quantity || 0
             const rate = item.rate || item.price_list_rate || 0
             return sum + (qty * rate)
@@ -327,16 +353,16 @@ const viewOrder = (table, event) => {
 
         selectedTableOrder.value = {
             tableName: table.table_name,
-            items: draft.items || [],
-            customer: draft.customer_name || draft.customer || table.current_customer,
+            items: allItems,
+            customer: customer,
             total,
-            status: 'Unpaid'
+            status: 'Unpaid',
+            orderCount: tableDrafts.length
         }
         showDetailsModal.value = true
     } else {
         // Fallback if draft not found locally (maybe needs fetch)
-        console.warn("Draft not found locally for table:", table.table_name)
-        // Could implement single fetch here if needed
+        console.warn("No drafts found locally for table:", table.table_name)
     }
 }
 
