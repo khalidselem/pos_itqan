@@ -2576,31 +2576,51 @@ async function handleTableSelected(table) {
     uiStore.showTablesDialog = false;
 
     if (table.status === 'Occupied' && (table.current_order || table.active_invoice)) {
-        // If user already has items in cart that don't belong to this table, warn them
-        if (!cartStore.isEmpty && cartStore.currentTable !== table.name) {
-             const proceed = await new Promise(resolve => {
-                // Ideally use a confirm dialog here, for now using browser confirm or just blocking
-                // Since we can't easily use confirm inside async without UI component, let's block for now
-                // creating a new pending order is safer.
-                // But wait, if they have items, we should ask them to save/clear.
-                // For occupied tables, we MUST load the remote order, so local cart MUST be cleared/saved.
-                resolve(false);
-             });
-             
-             if (!proceed) {
-                 showWarning(__("Please clear or save your current cart before opening an occupied table"));
-                 return;
-             }
-        }
-
         // Find the draft for this invoice
         await draftsStore.loadDrafts();
         const invoiceName = table.current_order || table.active_invoice;
         const draft = draftsStore.drafts.find(d => d.invoice_name === invoiceName || d.name === invoiceName);
-        
+
+        // If user already has items in cart that don't belong to this table
+        if (!cartStore.isEmpty && cartStore.currentTable?.name !== table.name) {
+             let action = 'cancel'; // cancel, merge, replace
+             
+             // Simple confirm for now. 
+             // Ideally we'd have a dialog with "Merge", "Replace", "Cancel"
+             if (window.confirm(__("You have items in the cart. Do you want to add them to this table? Click Cancel to discard current items and open the table."))) {
+                 action = 'merge';
+             } else {
+                 if (window.confirm(__("Discard current items and open table?"))) {
+                     action = 'replace';
+                 } else {
+                     return;
+                 }
+             }
+
+             if (action === 'replace') {
+                 cartStore.clearCart();
+             }
+             // If merge, we just keep items and they will be appended to the loaded draft?
+             // No, handleLoadDraft replaces the cart. 
+             // We need to buffer current items, load draft, then append buffer.
+        }
+
         if (draft) {
+             const currentItems = !cartStore.isEmpty && cartStore.currentTable?.name !== table.name ? [...cartStore.items] : [];
+            
             handleLoadDraft(draft);
             cartStore.currentTable = { name: table.name, table_name: table.table_name };
+            
+            if (currentItems.length > 0) {
+                // Determine if we should append or merge quantities?
+                // For simplicity, just append. The cart logic might handle duplicates if designed well,
+                // otherwise they appear as separate lines which is also fine.
+                // handleLoadDraft sets items. We push to it.
+                currentItems.forEach(item => {
+                    cartStore.addItem(item);
+                });
+                showSuccess(__("Items added to table order"));
+            }
         } else {
             // If no draft found but occupied, might be a direct invoice
             // Or draft was deleted. Let's start fresh and link it.
