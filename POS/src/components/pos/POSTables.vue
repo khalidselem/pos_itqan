@@ -488,6 +488,22 @@
                     class="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
                 >
             </div>
+
+            <!-- Note Field (Only for Receive mode) -->
+            <div v-if="customerDialogMode === 'receive'" class="px-5 py-3 border-b">
+                <label class="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {{ __('Note (Optional):') }}
+                </label>
+                <textarea 
+                    v-model="tableNote"
+                    rows="2"
+                    :placeholder="__('Add a note for this table...')"
+                    class="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 resize-none"
+                ></textarea>
+            </div>
             
             <!-- Customer List -->
             <div class="max-h-64 overflow-y-auto">
@@ -606,6 +622,7 @@ const customerDialogMode = ref('reserve') // 'reserve' or 'receive'
 const showStatusChangeDialog = ref(false)
 const customerSearchTerm = ref('')
 const selectedDate = ref('')
+const tableNote = ref('')
 const allCustomersList = ref([])
 const loadingCustomers = ref(false)
 
@@ -639,6 +656,7 @@ const openReceiveModal = async (table, event) => {
     tableToReserve.value = table
     customerDialogMode.value = 'receive'
     customerSearchTerm.value = ''
+    tableNote.value = '' // Reset note
     // Default to current time in correct format for datetime-local (YYYY-MM-DDTHH:mm)
     const now = new Date()
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
@@ -732,7 +750,8 @@ const selectCustomerForReservation = async (customer) => {
             table: tableToReserve.value.name,
             status: targetStatus,
             current_customer: customer.customer_name || customer.name,
-            received_at: formattedDate
+            received_at: formattedDate,
+            notes: tableNote.value || null
         })
         
         // Refresh tables to show new status

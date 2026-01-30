@@ -35,12 +35,16 @@ def get_tables():
     return tables
 
 @frappe.whitelist()
-def update_table_status(table, status, current_order=None, current_customer=None, clear_all_orders=False, received_at=None):
+def update_table_status(table, status, current_order=None, current_customer=None, clear_all_orders=False, received_at=None, notes=None):
     """Updates table status and optionally links/unlinks an order/customer."""
     doc = frappe.get_doc("POS Table", table)
     doc.status = status
     doc.current_order = current_order
     doc.current_customer = current_customer
+    
+    # Save notes if provided
+    if notes is not None:
+        doc.notes = notes
     
     # Save received_at timestamp when table becomes Occupied or Reserved
     # Only if the field exists in DB
