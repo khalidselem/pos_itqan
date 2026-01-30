@@ -571,6 +571,11 @@ def update_invoice(data):
             table_name = data.get("custom_pos_table") or data.get("custom_table") or data.get("table_name")
             if table_name:
                 invoice_doc.custom_table = table_name
+            
+            # Set table notes if provided
+            table_notes = data.get("custom_table_notes") or data.get("table_notes")
+            if table_notes and hasattr(invoice_doc, 'custom_table_notes'):
+                invoice_doc.custom_table_notes = table_notes
 
         # ========================================================================
         # ROUNDING CONFIGURATION

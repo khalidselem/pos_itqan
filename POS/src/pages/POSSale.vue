@@ -2575,7 +2575,7 @@ async function handleCheckoutTable(table) {
     
     // Clear current cart and merge all table drafts
     cartStore.clearCart();
-    cartStore.currentTable = { name: table.name, table_name: table.table_name };
+    cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
     
     // Track linked draft IDs for cleanup after payment
     const linkedDraftIds = [];
@@ -2658,7 +2658,7 @@ async function handleTableSelected(table) {
                 // Load the last/most recent draft (drafts are ordered by creation)
                 const primaryDraft = tableDrafts[tableDrafts.length - 1];
                 await handleLoadDraft(primaryDraft);
-                cartStore.currentTable = { name: table.name, table_name: table.table_name };
+                cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
                 
                 // Re-add buffered items
                 if (currentItems.length > 0) {
@@ -2670,7 +2670,7 @@ async function handleTableSelected(table) {
             } else {
                 // Start new order on same table, using existing customer
                 cartStore.clearCart();
-                cartStore.currentTable = { name: table.name, table_name: table.table_name };
+                cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
                 
                 // Use the table's existing customer
                 if (table.current_customer) {
@@ -2686,7 +2686,7 @@ async function handleTableSelected(table) {
         } else {
             // No drafts found but table is occupied (maybe direct invoice?)
             cartStore.clearCart();
-            cartStore.currentTable = { name: table.name, table_name: table.table_name };
+            cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
             
             // Use existing customer from table if available
             if (table.current_customer) {
@@ -2698,7 +2698,7 @@ async function handleTableSelected(table) {
     } else {
         // Table is Available or Reserved (but we can override reserve)
         // If we have items in cart, we just assign them to this table
-        cartStore.currentTable = { name: table.name, table_name: table.table_name };
+        cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
         
         // If cart was empty, maybe prompt for customer?
         if (cartStore.isEmpty && !cartStore.customer) {
