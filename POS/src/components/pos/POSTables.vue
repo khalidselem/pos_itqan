@@ -62,19 +62,39 @@
             </select>
         </div>
 
-        <div class="flex gap-3 text-[10px]">
-            <div class="flex items-center gap-1">
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span class="text-gray-600">{{ __('Available') }} ({{ statusCounts.Available }})</span>
-            </div>
-            <div class="flex items-center gap-1">
-                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
-                <span class="text-gray-600">{{ __('Reserved') }} ({{ statusCounts.Reserved }})</span>
-            </div>
-            <div class="flex items-center gap-1">
-                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                <span class="text-gray-600">{{ __('Occupied') }} ({{ statusCounts.Occupied }})</span>
-            </div>
+        <div class="flex gap-2">
+            <button 
+                @click="selectedStatus = selectedStatus === 'Available' ? 'All' : 'Available'"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95"
+                :class="selectedStatus === 'Available' 
+                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-md transform scale-105' 
+                    : 'bg-white border-emerald-200 text-gray-600 hover:border-emerald-400 hover:bg-emerald-50'"
+            >
+                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'Available' ? 'bg-white' : 'bg-emerald-500'"></span>
+                <span class="text-[10px] font-bold">{{ __('Available') }} ({{ statusCounts.Available }})</span>
+            </button>
+
+            <button 
+                @click="selectedStatus = selectedStatus === 'Reserved' ? 'All' : 'Reserved'"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95"
+                :class="selectedStatus === 'Reserved' 
+                    ? 'bg-orange-500 border-orange-500 text-white shadow-md transform scale-105' 
+                    : 'bg-white border-orange-200 text-gray-600 hover:border-orange-400 hover:bg-orange-50'"
+            >
+                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'Reserved' ? 'bg-white' : 'bg-orange-500'"></span>
+                <span class="text-[10px] font-bold">{{ __('Reserved') }} ({{ statusCounts.Reserved }})</span>
+            </button>
+
+            <button 
+                @click="selectedStatus = selectedStatus === 'Occupied' ? 'All' : 'Occupied'"
+                class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all duration-200 active:scale-95"
+                :class="selectedStatus === 'Occupied' 
+                    ? 'bg-red-500 border-red-500 text-white shadow-md transform scale-105' 
+                    : 'bg-white border-red-200 text-gray-600 hover:border-red-400 hover:bg-red-50'"
+            >
+                <span class="w-2 h-2 rounded-full" :class="selectedStatus === 'Occupied' ? 'bg-white' : 'bg-red-500'"></span>
+                <span class="text-[10px] font-bold">{{ __('Occupied') }} ({{ statusCounts.Occupied }})</span>
+            </button>
         </div>
       </div>
 
@@ -137,9 +157,23 @@
                     </div>
 
                     <div class="mt-auto flex justify-between items-center">
-                        <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-white/30">
-                            {{ getTranslatedStatus(table.status) }}
-                        </span>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-white/30" :class="getStatusClasses(table.status)">
+                                {{ getTranslatedStatus(table.status) }}
+                            </span>
+                            <!-- Reserve Button -->
+                            <button 
+                                v-if="table.status === 'Available'"
+                                @click="openReserveModal(table, $event)"
+                                class="p-1 px-2 flex items-center gap-1 text-[9px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-md transition-colors border border-amber-200"
+                                :title="__('Reserve Table')"
+                            >
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                {{ __('Reserve') }}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -168,8 +202,11 @@
                     <div class="flex items-center gap-2">
                         <h3 class="text-base font-bold text-gray-900">{{ selectedTableOrder.tableName }}</h3>
                         <!-- Edit indicator badge -->
-                        <span v-if="selectedTableOrder.isEdited" class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full flex items-center gap-0.5">
-                            ✏️ {{ __('Edited') }}
+                        <span v-if="selectedTableOrder.isEdited" class="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-bold rounded-full flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                            {{ __('Edited') }}
                         </span>
                         <!-- Order status badge -->
                         <span :class="getStatusBadgeClass(selectedTableOrder.orderStatus)" class="px-1.5 py-0.5 text-[9px] font-bold rounded-full">
@@ -356,6 +393,12 @@
         </div>
     </div>
   </div>
+    <!-- Customer Selection Dialog for Reservation -->
+    <CustomerDialog
+        v-model="showCustomerDialog"
+        :pos-profile="settingsStore.settings.pos_profile"
+        @customer-selected="handleCustomerSelected"
+    />
 </template>
 
 <script setup>
@@ -363,16 +406,20 @@ import { ref, computed, onMounted } from 'vue'
 import { call } from '@/utils/apiWrapper'
 import { useFormatters } from '@/composables/useFormatters'
 import { usePOSDraftsStore } from '@/stores/posDrafts'
+import { usePOSSettingsStore } from '@/stores/posSettings'
 import { printKitchenOrder, buildKitchenTicketHTML } from '@/utils/kitchenPrint'
+import CustomerDialog from '@/components/sale/CustomerDialog.vue'
 
 const emit = defineEmits(['close', 'table-selected', 'checkout-table'])
 const { formatCurrency } = useFormatters()
 const draftsStore = usePOSDraftsStore()
+const settingsStore = usePOSSettingsStore()
 
 const tables = ref([])
 const zones = ref([])
 const loading = ref(true)
 const selectedZone = ref('All')
+const selectedStatus = ref('All') // All | Available | Reserved | Occupied
 const sortOrder = ref('newest') // newest | oldest | status
 
 // Order details state
@@ -387,6 +434,40 @@ const currentTableDrafts = ref([])
 // Print modal state
 const showPrintModal = ref(false)
 const selectedPrintItems = ref([]) // Array of uniqueIds
+
+// Reservation state
+const showCustomerDialog = ref(false)
+const tableToReserve = ref(null)
+
+const openReserveModal = (table, event) => {
+    event.stopPropagation()
+    tableToReserve.value = table
+    showCustomerDialog.value = true
+}
+
+const handleCustomerSelected = async (customer) => {
+    if (!tableToReserve.value) return
+    
+    try {
+        await call('frappe.client.set_value', {
+            doctype: 'Restaurant Table',
+            name: tableToReserve.value.name,
+            fieldname: {
+                status: 'Reserved',
+                current_customer: customer.name // Use ID (name) of customer
+            }
+        })
+        
+        // Refresh tables to show new status
+        await fetchData()
+        
+    } catch (e) {
+        console.error('Failed to reserve table:', e)
+    } finally {
+        tableToReserve.value = null
+        showCustomerDialog.value = false
+    }
+}
 
 const fetchData = async () => {
     loading.value = true
@@ -407,13 +488,30 @@ const fetchData = async () => {
 }
 
 const filteredTables = computed(() => {
-    if (selectedZone.value === 'All') return tables.value
-    return tables.value.filter(t => t.zone === selectedZone.value)
+    let result = tables.value
+    
+    // Filter by Zone
+    if (selectedZone.value !== 'All') {
+        result = result.filter(t => t.zone === selectedZone.value)
+    }
+    
+    // Filter by Status
+    if (selectedStatus.value !== 'All') {
+        result = result.filter(t => t.status === selectedStatus.value)
+    }
+    
+    return result
 })
 
 const statusCounts = computed(() => {
     const counts = { Available: 0, Occupied: 0, Reserved: 0 }
-    filteredTables.value.forEach(t => {
+    
+    // Count based on tables filtered by ZONE only (ignore status filter)
+    const tablesInZone = selectedZone.value === 'All' 
+        ? tables.value 
+        : tables.value.filter(t => t.zone === selectedZone.value)
+        
+    tablesInZone.forEach(t => {
         if (counts[t.status] !== undefined) {
             counts[t.status]++
         }
