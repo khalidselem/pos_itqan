@@ -136,17 +136,17 @@
                         </div>
                     </div>
 
-                    <div v-if="table.status === 'Occupied'" class="mt-auto">
+                    <div v-if="['Occupied', 'Reserved'].includes(table.status)" class="mt-auto">
                         <!-- Customer Name - prominently displayed -->
                         <div class="text-xs font-bold truncate">
                             {{ getTableCustomerName(table) }}
                         </div>
-                        <!-- Received time -->
+                        <!-- Received/Reserved time -->
                         <div v-if="table.received_at" class="text-[8px] opacity-60">
                             🕐 {{ formatReceivedTime(table.received_at) }}
                         </div>
-                        <!-- Order info + edit indicator -->
-                        <div class="flex items-center gap-1.5 mt-0.5">
+                        <!-- Order info + edit indicator (Occupied only) -->
+                        <div v-if="table.status === 'Occupied'" class="flex items-center gap-1.5 mt-0.5">
                             <span v-if="getTableOrderCount(table) > 1" class="px-1 py-0.5 bg-blue-500 text-white text-[8px] font-bold rounded-full">
                                 {{ getTableOrderCount(table) }} {{ __('orders') }}
                             </span>
@@ -157,6 +157,19 @@
                                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                                 </svg>
                             </span>
+                        </div>
+                        <!-- Receive Button for Reserved tables -->
+                        <div v-if="table.status === 'Reserved'" class="mt-1">
+                            <button 
+                                @click="openReceiveModal(table, $event)"
+                                class="w-full p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded transition-colors border border-green-200"
+                                :title="__('Receive Table')"
+                            >
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                {{ __('Receive') }}
+                            </button>
                         </div>
                     </div>
 
