@@ -35,7 +35,7 @@ def get_tables():
     return tables
 
 @frappe.whitelist()
-def update_table_status(table, status, current_order=None, current_customer=None, clear_all_orders=False):
+def update_table_status(table, status, current_order=None, current_customer=None, clear_all_orders=False, received_at=None):
     """Updates table status and optionally links/unlinks an order/customer."""
     doc = frappe.get_doc("POS Table", table)
     doc.status = status
@@ -46,7 +46,8 @@ def update_table_status(table, status, current_order=None, current_customer=None
     # Only if the field exists in DB
     if frappe.db.has_column("POS Table", "received_at"):
         if status in ["Occupied", "Reserved"]:
-            doc.received_at = frappe.utils.now()
+            # Use provided time or current time
+            doc.received_at = received_at or frappe.utils.now()
         elif status == "Available":
             doc.received_at = None
     

@@ -473,6 +473,21 @@
                     />
                 </div>
             </div>
+
+            <!-- Date/Time Picker (Only for Receive mode) -->
+            <div v-if="customerDialogMode === 'receive'" class="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
+                <label class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {{ __('Received Time:') }}
+                </label>
+                <input 
+                    type="datetime-local" 
+                    v-model="selectedDate"
+                    class="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                >
+            </div>
             
             <!-- Customer List -->
             <div class="max-h-64 overflow-y-auto">
@@ -590,6 +605,7 @@ const tableToReserve = ref(null)
 const customerDialogMode = ref('reserve') // 'reserve' or 'receive'
 const showStatusChangeDialog = ref(false)
 const customerSearchTerm = ref('')
+const selectedDate = ref('')
 const allCustomersList = ref([])
 const loadingCustomers = ref(false)
 
@@ -623,6 +639,11 @@ const openReceiveModal = async (table, event) => {
     tableToReserve.value = table
     customerDialogMode.value = 'receive'
     customerSearchTerm.value = ''
+    // Default to current time in correct format for datetime-local (YYYY-MM-DDTHH:mm)
+    const now = new Date()
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+    selectedDate.value = now.toISOString().slice(0, 16)
+    
     showCustomerDialog.value = true
     
     // Load customers if not already loaded
@@ -630,6 +651,7 @@ const openReceiveModal = async (table, event) => {
         await loadCustomersList()
     }
 }
+// Removed duplicate openReserveModal declaration here
 
 const openStatusChangeModal = (table, event) => {
     event.stopPropagation()
@@ -698,10 +720,19 @@ const selectCustomerForReservation = async (customer) => {
     
     try {
         // Use the proper tables API to update status
+        const now = new Date()
+        const selectedDateTime = selectedDate.value ? new Date(selectedDate.value) : now
+        // Adjust for timezone offset for API if needed, but ISO string works usually. 
+        // However, datetime-local value is local time, while new Date(iso) parses as UTC if ends in Z, 
+        // or local if no timezone.
+        // Let's ensure we send a proper Frappe datetime string: "YYYY-MM-DD HH:mm:ss"
+        const formattedDate = selectedDate.value.replace('T', ' ') + ':00'
+
         await call('pos_itqan.api.tables.update_table_status', {
             table: tableToReserve.value.name,
             status: targetStatus,
-            current_customer: customer.customer_name || customer.name
+            current_customer: customer.customer_name || customer.name,
+            received_at: formattedDate
         })
         
         // Refresh tables to show new status
