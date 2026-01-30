@@ -110,9 +110,18 @@
                     <div v-if="table.status === 'Occupied'" class="mt-auto">
                         <div class="text-[10px] font-bold truncate opacity-80">
                     {{ 
-                        (table.status === 'Occupied' && table.current_order)
-                            ? (draftsStore.drafts.find(d => d.name === table.current_order || d.draft_id === table.current_order || d.invoice_name === table.current_order)?.customer_name || table.current_customer || __('No Customer'))
-                            : (table.current_customer || __('No Customer'))
+                        (() => {
+                            if (table.status !== 'Occupied' || !table.current_order) return (table.current_customer || __('No Customer'));
+                            const draft = draftsStore.drafts.find(d => d.name === table.current_order || d.draft_id === table.current_order || d.invoice_name === table.current_order);
+                            if (!draft) return (table.current_customer || __('No Customer'));
+                            
+                            // Handle customer object or string
+                            const customer = draft.customer;
+                            if (typeof customer === 'object' && customer !== null) {
+                                return customer.customer_name || customer.name || (table.current_customer || __('No Customer'));
+                            }
+                            return customer || table.current_customer || __('No Customer');
+                        })()
                     }}
                 </div>
                         <div class="text-[10px] truncate opacity-60">{{ table.current_order }}</div>
