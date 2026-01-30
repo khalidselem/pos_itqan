@@ -2563,10 +2563,29 @@ function handleManagementMenuClick(menuItem) {
 async function handleTableSelected(table) {
     uiStore.showTablesDialog = false;
 
-    if (table.status === 'Occupied' && table.active_invoice) {
+    if (table.status === 'Occupied' && (table.current_order || table.active_invoice)) {
+        // If user already has items in cart that don't belong to this table, warn them
+        if (!cartStore.isEmpty && cartStore.currentTable !== table.name) {
+             const proceed = await new Promise(resolve => {
+                // Ideally use a confirm dialog here, for now using browser confirm or just blocking
+                // Since we can't easily use confirm inside async without UI component, let's block for now
+                // creating a new pending order is safer.
+                // But wait, if they have items, we should ask them to save/clear.
+                // For occupied tables, we MUST load the remote order, so local cart MUST be cleared/saved.
+                resolve(false);
+             });
+             
+             if (!proceed) {
+                 showWarning(__("Please clear or save your current cart before opening an occupied table"));
+                 return;
+             }
+        }
+
         // Find the draft for this invoice
         await draftsStore.loadDrafts();
-        const draft = draftsStore.drafts.find(d => d.invoice_name === table.active_invoice);
+        const invoiceName = table.current_order || table.active_invoice;
+        const draft = draftsStore.drafts.find(d => d.invoice_name === invoiceName || d.name === invoiceName);
+        
         if (draft) {
             handleLoadDraft(draft);
             cartStore.currentTable = table.name;
@@ -2578,19 +2597,16 @@ async function handleTableSelected(table) {
             uiStore.showCustomerDialog = true;
         }
     } else {
-        // Start fresh with this table
-        if (!cartStore.isEmpty) {
-            // Save current cart as draft first?
-            showWarning(__("Please clear or save your current cart before opening a new table"));
-            return;
-        }
-        cartStore.clearCart();
+        // Table is Available or Reserved (but we can override reserve)
+        // If we have items in cart, we just assign them to this table
         cartStore.currentTable = table.name;
         
-        // Open customer selection if none selected
-        if (!cartStore.customer) {
+        // If cart was empty, maybe prompt for customer?
+        if (cartStore.isEmpty && !cartStore.customer) {
             uiStore.showCustomerDialog = true;
         }
+        
+        showSuccess(__(`Assigned to Table ${table.table_name}`));
     }
 }
 
