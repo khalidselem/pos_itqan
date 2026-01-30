@@ -602,6 +602,7 @@
 				v-if="uiStore.showTablesDialog" 
 				@close="uiStore.showTablesDialog = false" 
 				@table-selected="handleTableSelected" 
+				@checkout-table="handleCheckoutTable" 
 			/>
 
 			<!-- Stock Lookup Dialog (Products Menu) -->
