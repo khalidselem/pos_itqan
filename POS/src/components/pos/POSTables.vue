@@ -225,25 +225,122 @@
                     <span>{{ __('Total') }}</span>
                     <span class="text-emerald-600">{{ formatCurrency(selectedTableOrder.total) }}</span>
                 </div>
-                <div class="grid gap-1.5" :class="canEditOrder ? 'grid-cols-4' : 'grid-cols-3'">
-                    <button @click="closeDetailsModal" class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 font-semibold text-[10px] rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="grid grid-cols-5 gap-1">
+                    <button @click="closeDetailsModal" class="px-1.5 py-1.5 bg-white border border-gray-300 text-gray-700 font-semibold text-[9px] rounded-lg hover:bg-gray-50 transition-colors">
                         {{ __('Close') }}
+                    </button>
+                    <button 
+                        @click="openPrintSelection" 
+                        class="px-1.5 py-1.5 bg-purple-500 text-white font-semibold text-[9px] rounded-lg hover:bg-purple-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                    >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        <span>{{ __('Print') }}</span>
                     </button>
                     <button 
                         v-if="canEditOrder"
                         @click="editOrderFromDetails" 
-                        class="px-2 py-1.5 bg-amber-500 text-white font-semibold text-[10px] rounded-lg hover:bg-amber-600 transition-colors shadow-sm flex items-center justify-center gap-1"
+                        class="px-1.5 py-1.5 bg-amber-500 text-white font-semibold text-[9px] rounded-lg hover:bg-amber-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
                     >
-                        <span>{{ __('Edit') }}</span>
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        <span>{{ __('Edit') }}</span>
                     </button>
-                    <button @click="submitOrderFromDetails" class="px-2 py-1.5 bg-blue-600 text-white font-semibold text-[10px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-1">
-                        <span>{{ __('Open') }}</span>
+                    <button @click="submitOrderFromDetails" class="px-1.5 py-1.5 bg-blue-600 text-white font-semibold text-[9px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span>{{ __('Open') }}</span>
                     </button>
-                    <button @click="checkoutFromDetails" class="px-2 py-1.5 bg-green-600 text-white font-semibold text-[10px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-1">
-                        <span>{{ __('Pay') }}</span>
+                    <button @click="checkoutFromDetails" class="px-1.5 py-1.5 bg-green-600 text-white font-semibold text-[9px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                        <span>{{ __('Pay') }}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Selection Modal -->
+    <div v-if="showPrintModal" class="fixed inset-0 z-[650] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="closePrintModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-up border border-gray-100">
+            <div class="px-5 py-3 border-b bg-purple-50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        {{ __('Print Order') }}
+                    </h3>
+                    <p class="text-xs text-gray-500">{{ selectedTableOrder?.tableName }} - {{ __('Select Items') }}</p>
+                </div>
+                <button @click="closePrintModal" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="p-4 max-h-[50vh] overflow-y-auto">
+                <!-- Select All Toggle -->
+                <div class="flex items-center justify-between mb-3 pb-2 border-b">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            :checked="allItemsSelected" 
+                            @change="toggleSelectAll"
+                            class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                        />
+                        <span class="text-sm font-semibold text-gray-700">{{ __('Select All') }}</span>
+                    </label>
+                    <span class="text-xs text-gray-500">{{ selectedPrintItems.length }} / {{ allPrintableItems.length }} {{ __('selected') }}</span>
+                </div>
+
+                <!-- Items grouped by order -->
+                <div v-for="(orderGroup, orderIdx) in printableOrderGroups" :key="orderIdx" class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-[10px] font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full">
+                            {{ __('Order') }} {{ orderIdx + 1 }}
+                        </span>
+                        <span class="text-[9px] text-gray-400">{{ formatTime(orderGroup.createdAt) }}</span>
+                    </div>
+                    <ul class="space-y-1.5">
+                        <li 
+                            v-for="item in orderGroup.items" 
+                            :key="item.uniqueId"
+                            class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                            @click="toggleItemSelection(item.uniqueId)"
+                        >
+                            <input 
+                                type="checkbox" 
+                                :checked="selectedPrintItems.includes(item.uniqueId)"
+                                @click.stop
+                                @change="toggleItemSelection(item.uniqueId)"
+                                class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                            />
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-medium text-gray-900 truncate">{{ item.item_name || item.item_code }}</span>
+                                    <span class="text-[10px] font-bold text-gray-600">{{ item.qty || item.quantity }}x</span>
+                                </div>
+                                <div class="flex items-center justify-between mt-0.5">
+                                    <span class="text-[10px] text-gray-500">@ {{ formatCurrency(item.rate || item.price_list_rate) }}</span>
+                                    <span class="text-[10px] font-semibold text-gray-700">{{ formatCurrency((item.qty || item.quantity) * (item.rate || item.price_list_rate)) }}</span>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="px-5 py-3 border-t bg-gray-50">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm font-semibold text-gray-700">{{ __('Selected Total') }}</span>
+                    <span class="text-base font-bold text-purple-600">{{ formatCurrency(selectedItemsTotal) }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button @click="closePrintModal" class="px-3 py-2 bg-white border border-gray-300 text-gray-700 font-semibold text-xs rounded-lg hover:bg-gray-50 transition-colors">
+                        {{ __('Cancel') }}
+                    </button>
+                    <button 
+                        @click="printSelectedItems" 
+                        :disabled="selectedPrintItems.length === 0"
+                        class="px-3 py-2 bg-purple-600 text-white font-semibold text-xs rounded-lg hover:bg-purple-700 transition-colors shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                        {{ __('Print Order') }}
                     </button>
                 </div>
             </div>
@@ -276,6 +373,10 @@ const canEditOrder = ref(false)
 
 // Store all drafts for the selected table for order switching
 const currentTableDrafts = ref([])
+
+// Print modal state
+const showPrintModal = ref(false)
+const selectedPrintItems = ref([]) // Array of uniqueIds
 
 const fetchData = async () => {
     loading.value = true
@@ -530,6 +631,225 @@ const editOrderFromDetails = () => {
     submitOrderFromDetails()
 }
 
+// ==================== PRINT SELECTION LOGIC ====================
+
+/**
+ * All printable items across all orders with unique IDs
+ */
+const allPrintableItems = computed(() => {
+    const items = []
+    currentTableDrafts.value.forEach((draft, draftIdx) => {
+        const draftItems = draft.items || []
+        draftItems.forEach((item, itemIdx) => {
+            items.push({
+                ...item,
+                uniqueId: `${draftIdx}-${itemIdx}`,
+                orderIndex: draftIdx,
+                createdAt: draft.original_created_at || draft.created_at
+            })
+        })
+    })
+    return items
+})
+
+/**
+ * Items grouped by order for display
+ */
+const printableOrderGroups = computed(() => {
+    const groups = []
+    currentTableDrafts.value.forEach((draft, draftIdx) => {
+        const draftItems = draft.items || []
+        const itemsWithIds = draftItems.map((item, itemIdx) => ({
+            ...item,
+            uniqueId: `${draftIdx}-${itemIdx}`
+        }))
+        groups.push({
+            orderIndex: draftIdx,
+            createdAt: draft.original_created_at || draft.created_at,
+            items: itemsWithIds
+        })
+    })
+    return groups
+})
+
+/**
+ * Check if all items are selected
+ */
+const allItemsSelected = computed(() => {
+    return allPrintableItems.value.length > 0 && 
+           selectedPrintItems.value.length === allPrintableItems.value.length
+})
+
+/**
+ * Calculate total for selected items
+ */
+const selectedItemsTotal = computed(() => {
+    return allPrintableItems.value
+        .filter(item => selectedPrintItems.value.includes(item.uniqueId))
+        .reduce((sum, item) => {
+            const qty = item.qty || item.quantity || 0
+            const rate = item.rate || item.price_list_rate || 0
+            return sum + (qty * rate)
+        }, 0)
+})
+
+/**
+ * Open print selection modal
+ */
+const openPrintSelection = () => {
+    // Pre-select all items
+    selectedPrintItems.value = allPrintableItems.value.map(item => item.uniqueId)
+    showPrintModal.value = true
+}
+
+/**
+ * Close print selection modal
+ */
+const closePrintModal = () => {
+    showPrintModal.value = false
+    selectedPrintItems.value = []
+}
+
+/**
+ * Toggle selection of a single item
+ */
+const toggleItemSelection = (uniqueId) => {
+    const idx = selectedPrintItems.value.indexOf(uniqueId)
+    if (idx > -1) {
+        selectedPrintItems.value.splice(idx, 1)
+    } else {
+        selectedPrintItems.value.push(uniqueId)
+    }
+}
+
+/**
+ * Toggle select all items
+ */
+const toggleSelectAll = () => {
+    if (allItemsSelected.value) {
+        selectedPrintItems.value = []
+    } else {
+        selectedPrintItems.value = allPrintableItems.value.map(item => item.uniqueId)
+    }
+}
+
+/**
+ * Print selected items
+ */
+const printSelectedItems = () => {
+    const itemsToPrint = allPrintableItems.value.filter(item => 
+        selectedPrintItems.value.includes(item.uniqueId)
+    )
+    
+    if (itemsToPrint.length === 0) return
+    
+    const tableName = selectedTableOrder.value?.tableName || 'Table'
+    const total = selectedItemsTotal.value
+    
+    // Build print HTML
+    const itemsHTML = itemsToPrint.map(item => {
+        const qty = item.qty || item.quantity || 1
+        const name = item.item_name || item.item_code
+        const rate = item.rate || item.price_list_rate || 0
+        const lineTotal = qty * rate
+        return `
+            <tr>
+                <td style="padding: 4px 8px; font-size: 14px;">${name}</td>
+                <td style="padding: 4px 8px; text-align: center; font-weight: bold;">${qty}</td>
+                <td style="padding: 4px 8px; text-align: right;">${rate.toFixed(3)}</td>
+                <td style="padding: 4px 8px; text-align: right; font-weight: bold;">${lineTotal.toFixed(3)}</td>
+            </tr>
+        `
+    }).join('')
+    
+    const timeStr = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    })
+    
+    const printHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order - ${tableName}</title>
+    <style>
+        @page { size: 80mm auto; margin: 5mm; }
+        body { font-family: 'Courier New', monospace; margin: 0; padding: 10px; width: 80mm; }
+        .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+        .header h1 { font-size: 18px; margin: 0 0 5px 0; }
+        .table-name { font-size: 20px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { border-bottom: 1px solid #000; padding: 4px 8px; text-align: left; }
+        tr { border-bottom: 1px dotted #ccc; }
+        .total-row { border-top: 2px solid #000; font-size: 16px; font-weight: bold; }
+        .footer { text-align: center; border-top: 2px dashed #000; padding-top: 10px; margin-top: 10px; font-size: 11px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧾 Order Receipt</h1>
+        <div class="table-name">${tableName}</div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Price</th>
+                <th style="text-align: right;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${itemsHTML}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td colspan="3" style="padding: 8px; text-align: right;">Grand Total:</td>
+                <td style="padding: 8px; text-align: right;">${total.toFixed(3)}</td>
+            </tr>
+        </tfoot>
+    </table>
+    
+    <div class="footer">
+        Time: ${timeStr}
+    </div>
+</body>
+</html>
+    `
+    
+    // Print using iframe
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'absolute'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = 'none'
+    iframe.style.left = '-9999px'
+    
+    document.body.appendChild(iframe)
+    
+    const doc = iframe.contentDocument || iframe.contentWindow.document
+    doc.open()
+    doc.write(printHTML)
+    doc.close()
+    
+    iframe.onload = () => {
+        try {
+            iframe.contentWindow.focus()
+            iframe.contentWindow.print()
+        } catch (e) {
+            console.error('Print error:', e)
+        }
+        setTimeout(() => {
+            document.body.removeChild(iframe)
+        }, 1000)
+    }
+    
+    closePrintModal()
+}
+
 onMounted(fetchData)
 </script>
 
@@ -541,5 +861,14 @@ onMounted(fetchData)
 @keyframes slideLeft {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.2s ease-out;
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 </style>
