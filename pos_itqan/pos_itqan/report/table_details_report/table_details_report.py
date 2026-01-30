@@ -60,28 +60,37 @@ def get_columns():
 
 
 def get_data(filters):
+    # Check if Restaurant Table DocType exists
+    if not frappe.db.exists("DocType", "Restaurant Table"):
+        frappe.msgprint(_("Restaurant Table DocType not found. Please ensure the POS Tables module is installed."))
+        return []
+    
     conditions = []
     
     if filters.get("zone"):
-        conditions.append(f"zone = '{filters.get('zone')}'")
+        conditions.append(f"zone = '{frappe.db.escape(filters.get('zone'))}'")
     
     if filters.get("status"):
-        conditions.append(f"status = '{filters.get('status')}'")
+        conditions.append(f"status = '{frappe.db.escape(filters.get('status'))}'")
     
     where_clause = " AND ".join(conditions) if conditions else "1=1"
     
-    tables = frappe.db.sql(f"""
-        SELECT 
-            table_name,
-            zone,
-            status,
-            current_customer,
-            current_order,
-            capacity,
-            notes
-        FROM `tabRestaurant Table`
-        WHERE {where_clause}
-        ORDER BY zone, table_name
-    """, as_dict=True)
-    
-    return tables
+    try:
+        tables = frappe.db.sql(f"""
+            SELECT 
+                table_name,
+                zone,
+                status,
+                current_customer,
+                current_order,
+                capacity,
+                notes
+            FROM `tabRestaurant Table`
+            WHERE {where_clause}
+            ORDER BY zone, table_name
+        """, as_dict=True)
+        
+        return tables
+    except Exception as e:
+        frappe.log_error(f"Table Details Report Error: {str(e)}")
+        return []

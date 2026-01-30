@@ -20,12 +20,6 @@ def get_columns():
             "width": 120
         },
         {
-            "fieldname": "zone",
-            "label": _("Zone"),
-            "fieldtype": "Data",
-            "width": 100
-        },
-        {
             "fieldname": "customer",
             "label": _("Customer"),
             "fieldtype": "Link",
@@ -70,33 +64,55 @@ def get_data(filters):
     conditions = ["si.is_pos = 1", "si.docstatus = 1"]
     
     if filters.get("from_date"):
-        conditions.append(f"si.posting_date >= '{filters.get('from_date')}'")
+        conditions.append(f"si.posting_date >= '{frappe.db.escape(filters.get('from_date'))}'")
     
     if filters.get("to_date"):
-        conditions.append(f"si.posting_date <= '{filters.get('to_date')}'")
-    
-    if filters.get("zone"):
-        conditions.append(f"rt.zone = '{filters.get('zone')}'")
+        conditions.append(f"si.posting_date <= '{frappe.db.escape(filters.get('to_date'))}'")
     
     where_clause = " AND ".join(conditions)
     
-    # Get invoices that have table info
-    invoices = frappe.db.sql(f"""
-        SELECT 
-            rt.table_name,
-            rt.zone,
-            si.customer,
-            si.name as invoice,
-            si.grand_total,
-            si.posting_date,
-            si.posting_time,
-            si.status
-        FROM `tabSales Invoice` si
-        LEFT JOIN `tabRestaurant Table` rt ON si.custom_table = rt.name
-        WHERE {where_clause}
-            AND si.custom_table IS NOT NULL
-            AND si.custom_table != ''
-        ORDER BY si.posting_date DESC, si.posting_time DESC
-    """, as_dict=True)
+    # Check if custom_table field exists on Sales Invoice
+    try:
+        meta = frappe.get_meta("Sales Invoice")
+        has_custom_table = meta.has_field("custom_table")
+    except Exception:
+        has_custom_table = False
     
-    return invoices
+    try:
+        if has_custom_table:
+            # Query with table info
+            invoices = frappe.db.sql(f"""
+                SELECT 
+                    si.custom_table as table_name,
+                    si.customer,
+                    si.name as invoice,
+                    si.grand_total,
+                    si.posting_date,
+                    si.posting_time,
+                    si.status
+                FROM `tabSales Invoice` si
+                WHERE {where_clause}
+                    AND si.custom_table IS NOT NULL
+                    AND si.custom_table != ''
+                ORDER BY si.posting_date DESC, si.posting_time DESC
+            """, as_dict=True)
+        else:
+            # Query without table info - just show POS invoices
+            invoices = frappe.db.sql(f"""
+                SELECT 
+                    '' as table_name,
+                    si.customer,
+                    si.name as invoice,
+                    si.grand_total,
+                    si.posting_date,
+                    si.posting_time,
+                    si.status
+                FROM `tabSales Invoice` si
+                WHERE {where_clause}
+                ORDER BY si.posting_date DESC, si.posting_time DESC
+            """, as_dict=True)
+        
+        return invoices
+    except Exception as e:
+        frappe.log_error(f"Received Tables Report Error: {str(e)}")
+        return []

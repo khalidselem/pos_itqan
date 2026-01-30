@@ -68,33 +68,48 @@ def get_columns():
 
 
 def get_data(filters):
-    conditions = ["is_edited = 1"]
+    # Check if POS Draft Order DocType exists
+    if not frappe.db.exists("DocType", "POS Draft Order"):
+        frappe.msgprint(_("POS Draft Order DocType not found. Please ensure the POS module is properly installed."))
+        return []
+    
+    conditions = []
+    
+    # Check if is_edited field exists
+    try:
+        meta = frappe.get_meta("POS Draft Order")
+        if not meta.has_field("is_edited"):
+            frappe.msgprint(_("The 'is_edited' field is not available in POS Draft Order."))
+            return []
+        conditions.append("is_edited = 1")
+    except Exception:
+        return []
     
     if filters.get("from_date"):
-        conditions.append(f"creation >= '{filters.get('from_date')}'")
+        conditions.append(f"creation >= '{frappe.db.escape(filters.get('from_date'))}'")
     
     if filters.get("to_date"):
-        conditions.append(f"creation <= '{filters.get('to_date')} 23:59:59'")
+        conditions.append(f"creation <= '{frappe.db.escape(filters.get('to_date'))} 23:59:59'")
     
     where_clause = " AND ".join(conditions)
     
-    # Check if POS Draft Order table exists
-    if not frappe.db.table_exists("POS Draft Order"):
+    try:
+        orders = frappe.db.sql(f"""
+            SELECT 
+                name as order_name,
+                table_name,
+                customer,
+                original_total,
+                grand_total as current_total,
+                edit_count,
+                last_edited_at,
+                last_edited_by
+            FROM `tabPOS Draft Order`
+            WHERE {where_clause}
+            ORDER BY last_edited_at DESC
+        """, as_dict=True)
+        
+        return orders
+    except Exception as e:
+        frappe.log_error(f"Order Edits Report Error: {str(e)}")
         return []
-    
-    orders = frappe.db.sql(f"""
-        SELECT 
-            name as order_name,
-            table_name,
-            customer,
-            original_total,
-            grand_total as current_total,
-            edit_count,
-            last_edited_at,
-            last_edited_by
-        FROM `tabPOS Draft Order`
-        WHERE {where_clause}
-        ORDER BY last_edited_at DESC
-    """, as_dict=True)
-    
-    return orders
