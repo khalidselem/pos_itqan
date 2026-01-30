@@ -160,31 +160,33 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto flex justify-between items-center">
-                        <div class="flex items-center gap-2">
+                    <div class="mt-auto">
+                        <!-- Status Badge -->
+                        <div class="mb-1">
                             <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-white/30" :class="getStatusClasses(table.status)">
                                 {{ getTranslatedStatus(table.status) }}
                             </span>
+                        </div>
+                        <!-- Action Buttons for Available tables -->
+                        <div v-if="table.status === 'Available'" class="flex items-center gap-1">
                             <!-- Reserve Button -->
                             <button 
-                                v-if="table.status === 'Available'"
                                 @click="openReserveModal(table, $event)"
-                                class="p-1 px-2 flex items-center gap-1 text-[9px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-md transition-colors border border-amber-200"
+                                class="p-1 px-1.5 flex items-center gap-0.5 text-[8px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded transition-colors border border-amber-200"
                                 :title="__('Reserve Table')"
                             >
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                                 {{ __('Reserve') }}
                             </button>
                             <!-- Receive Button (Seat Customer) -->
                             <button 
-                                v-if="table.status === 'Available'"
                                 @click="openReceiveModal(table, $event)"
-                                class="p-1 px-2 flex items-center gap-1 text-[9px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors border border-green-200"
+                                class="p-1 px-1.5 flex items-center gap-0.5 text-[8px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded transition-colors border border-green-200"
                                 :title="__('Receive Table')"
                             >
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                 </svg>
                                 {{ __('Receive') }}
