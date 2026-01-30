@@ -361,7 +361,7 @@ import { ref, computed, onMounted } from 'vue'
 import { call } from '@/utils/apiWrapper'
 import { useFormatters } from '@/composables/useFormatters'
 import { usePOSDraftsStore } from '@/stores/posDrafts'
-import { printKitchenOrder } from '@/utils/kitchenPrint'
+import { printKitchenOrder, buildKitchenTicketHTML } from '@/utils/kitchenPrint'
 
 const emit = defineEmits(['close', 'table-selected', 'checkout-table'])
 const { formatCurrency } = useFormatters()
@@ -886,18 +886,50 @@ const printToKitchen = () => {
         return
     }
     
-    // Format items for kitchen print
+    // Format items for kitchen print (include ALL items, no filtering)
     const kitchenItems = items.map(item => ({
         item_name: item.item_name || item.item_code,
         qty: item.qty || item.quantity || 1,
         notes: item.notes || item.description || ''
     }))
     
-    printKitchenOrder({
+    // Build kitchen ticket HTML directly (bypass item_group filter)
+    const ticketHTML = buildKitchenTicketHTML({
         tableName,
         items: kitchenItems,
         isModification: isEdited
     })
+    
+    // Create iframe and print
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'absolute'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = 'none'
+    iframe.style.left = '-9999px'
+    
+    document.body.appendChild(iframe)
+    
+    const doc = iframe.contentDocument || iframe.contentWindow.document
+    doc.open()
+    doc.write(ticketHTML)
+    doc.close()
+    
+    // Wait for content then print
+    iframe.onload = () => {
+        try {
+            iframe.contentWindow.focus()
+            iframe.contentWindow.print()
+        } catch (e) {
+            console.error('Kitchen print error:', e)
+        }
+        
+        setTimeout(() => {
+            document.body.removeChild(iframe)
+        }, 1000)
+    }
+    
+    console.log(`Kitchen order printed: ${kitchenItems.length} items for ${tableName}`)
 }
 
 onMounted(fetchData)

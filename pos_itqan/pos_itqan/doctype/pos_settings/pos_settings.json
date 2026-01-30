@@ -60,6 +60,8 @@
         "section_break_printing",
         "allow_print_last_invoice",
         "silent_print",
+        "column_break_printing",
+        "kitchen_print_format",
         "section_break_delivery",
         "use_delivery_charges",
         "auto_set_delivery_charges",
@@ -454,6 +456,17 @@
             "fieldname": "silent_print",
             "fieldtype": "Check",
             "label": "Enable Silent Print"
+        },
+        {
+            "fieldname": "column_break_printing",
+            "fieldtype": "Column Break"
+        },
+        {
+            "description": "Select a Print Format for kitchen orders. Leave empty to use default thermal receipt format.",
+            "fieldname": "kitchen_print_format",
+            "fieldtype": "Link",
+            "label": "Kitchen Print Format",
+            "options": "Print Format"
         },
         {
             "collapsible": 1,
