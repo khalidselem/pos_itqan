@@ -108,7 +108,13 @@
                     </div>
 
                     <div v-if="table.status === 'Occupied'" class="mt-auto">
-                        <div class="text-[10px] font-bold truncate opacity-80">{{ table.current_customer || __('No Customer') }}</div>
+                        <div class="text-[10px] font-bold truncate opacity-80">
+                    {{ 
+                        (table.status === 'Occupied' && table.current_order)
+                            ? (draftsStore.drafts.find(d => d.name === table.current_order || d.draft_id === table.current_order || d.invoice_name === table.current_order)?.customer_name || table.current_customer || __('No Customer'))
+                            : (table.current_customer || __('No Customer'))
+                    }}
+                </div>
                         <div class="text-[10px] truncate opacity-60">{{ table.current_order }}</div>
                     </div>
 
