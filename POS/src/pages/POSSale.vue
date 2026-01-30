@@ -2562,14 +2562,45 @@ function handleManagementMenuClick(menuItem) {
 }
 
 async function handleCheckoutTable(table) {
-    const isSameTable = cartStore.currentTable?.name === table.name;
+    uiStore.showTablesDialog = false;
     
-    // If not same table, or if cart is empty, we must load it first
-    if (!isSameTable || cartStore.isEmpty) {
-        await handleTableSelected(table);
+    // Load all drafts for this table and merge them into cart
+    await draftsStore.loadDrafts();
+    const tableDrafts = draftsStore.getDraftsForTable(table.name);
+    
+    if (tableDrafts.length === 0) {
+        showWarning(__("No orders found for this table"));
+        return;
     }
     
-    // If table loaded successfully and has items (or we already had items for this table), trigger payment
+    // Clear current cart and merge all table drafts
+    cartStore.clearCart();
+    cartStore.currentTable = { name: table.name, table_name: table.table_name };
+    
+    // Track linked draft IDs for cleanup after payment
+    const linkedDraftIds = [];
+    
+    for (const draft of tableDrafts) {
+        linkedDraftIds.push(draft.draft_id);
+        
+        // Set customer from first draft (they should all be the same)
+        if (!cartStore.customer && draft.customer) {
+            cartStore.setCustomer(draft.customer);
+        }
+        
+        // Add all items from this draft
+        const items = draft.items || [];
+        for (const item of items) {
+            cartStore.addItem(item, item.quantity || item.qty || 1, true, shiftStore.currentProfile);
+        }
+    }
+    
+    // Store linked draft IDs in cart for cleanup after payment
+    cartStore.linkedDraftIds = linkedDraftIds;
+    
+    // Rebuild cache after merging all items
+    cartStore.rebuildIncrementalCache();
+    
     if (!cartStore.isEmpty) {
         handleProceedToPayment();
     }
@@ -2579,7 +2610,7 @@ async function handleTableSelected(table) {
     const isSameTable = cartStore.currentTable?.name === table.name;
     uiStore.showTablesDialog = false;
 
-    if (table.status === 'Occupied' && (table.current_order || table.active_invoice)) {
+    if (table.status === 'Occupied' && (table.current_order || table.orders?.length > 0)) {
         // If it's the SAME table and we ALREADY have items in cart, we don't want to reload 
         // the draft from the server because that would overwrite any unsaved changes the user
         // just made to the cart. 
@@ -2588,17 +2619,14 @@ async function handleTableSelected(table) {
             return;
         }
 
-        // Find the draft for this invoice
+        // Load all drafts for this table
         await draftsStore.loadDrafts();
-        const invoiceName = table.current_order || table.active_invoice;
-        const draft = draftsStore.drafts.find(d => d.invoice_name === invoiceName || d.name === invoiceName);
+        const tableDrafts = draftsStore.getDraftsForTable(table.name);
 
-        // If user already has items in cart that don't belong to this table (or it was another table)
+        // If user already has items in cart that don't belong to this table
         if (!cartStore.isEmpty && !isSameTable) {
              let action = 'cancel'; // cancel, merge, replace
              
-             // Simple confirm for now. 
-             // Ideally we'd have a dialog with "Merge", "Replace", "Cancel"
              if (window.confirm(__("You have items in the cart. Do you want to add them to this table? Click Cancel to discard current items and open the table."))) {
                  action = 'merge';
              } else {
@@ -2612,27 +2640,60 @@ async function handleTableSelected(table) {
              if (action === 'replace') {
                  cartStore.clearCart();
              }
-             // If merge, we buffer current items, load draft, then append buffer.
         }
 
-        if (draft) {
-             const currentItems = !cartStore.isEmpty && !isSameTable ? [...cartStore.invoiceItems] : [];
+        if (tableDrafts.length > 0) {
+            // Ask user: Load existing order or create new order?
+            let loadExisting = true;
+            if (tableDrafts.length > 0 && cartStore.isEmpty) {
+                loadExisting = window.confirm(
+                    __("This table has {0} existing order(s). Click OK to open them, or Cancel to start a new order.", [tableDrafts.length])
+                );
+            }
             
-            await handleLoadDraft(draft);
-            cartStore.currentTable = { name: table.name, table_name: table.table_name };
-            
-            if (currentItems.length > 0) {
-                currentItems.forEach(item => {
-                    cartStore.addItem(item, item.quantity || item.qty || 1, true, shiftStore.currentProfile);
-                });
-                showSuccess(__("Items added to table order"));
+            if (loadExisting) {
+                // Buffer current items if merging
+                const currentItems = !cartStore.isEmpty && !isSameTable ? [...cartStore.invoiceItems] : [];
+                
+                // Load the first/most recent draft
+                const primaryDraft = tableDrafts[0];
+                await handleLoadDraft(primaryDraft);
+                cartStore.currentTable = { name: table.name, table_name: table.table_name };
+                
+                // Re-add buffered items
+                if (currentItems.length > 0) {
+                    currentItems.forEach(item => {
+                        cartStore.addItem(item, item.quantity || item.qty || 1, true, shiftStore.currentProfile);
+                    });
+                    showSuccess(__("Items added to table order"));
+                }
+            } else {
+                // Start new order on same table, using existing customer
+                cartStore.clearCart();
+                cartStore.currentTable = { name: table.name, table_name: table.table_name };
+                
+                // Use the table's existing customer
+                if (table.current_customer) {
+                    cartStore.setCustomer(table.current_customer);
+                    showSuccess(__(`New order for Table ${table.table_name}`));
+                } else if (tableDrafts[0]?.customer) {
+                    cartStore.setCustomer(tableDrafts[0].customer);
+                    showSuccess(__(`New order for Table ${table.table_name}`));
+                } else {
+                    uiStore.showCustomerDialog = true;
+                }
             }
         } else {
-            // If no draft found but occupied, might be a direct invoice
-            // Or draft was deleted. Let's start fresh and link it.
+            // No drafts found but table is occupied (maybe direct invoice?)
             cartStore.clearCart();
             cartStore.currentTable = { name: table.name, table_name: table.table_name };
-            uiStore.showCustomerDialog = true;
+            
+            // Use existing customer from table if available
+            if (table.current_customer) {
+                cartStore.setCustomer(table.current_customer);
+            } else {
+                uiStore.showCustomerDialog = true;
+            }
         }
     } else {
         // Table is Available or Reserved (but we can override reserve)

@@ -217,6 +217,9 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		addItemToInvoice(item, qty)
 	}
 
+	// Track linked draft IDs for multi-order checkout cleanup
+	const linkedDraftIds = ref([])
+
 	function clearCart() {
 		// Cancel any pending offer processing
 		debouncedProcessOffers.cancel()
@@ -228,6 +231,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		appliedCoupon.value = null
 		currentDraftId.value = null
 		currentTable.value = null
+		linkedDraftIds.value = [] // Reset linked drafts
 		targetDoctype.value = "Sales Invoice"
 
 		// Reset offer processing state
@@ -260,7 +264,25 @@ export const usePOSCartStore = defineStore("posCart", () => {
 			return
 		}
 
-		return await baseSubmitInvoice(targetDoctype.value, deliveryDate.value)
+		// Store table info before submission for cleanup
+		const tableToCleanup = currentTable.value?.name
+		const draftIdsToCleanup = [...linkedDraftIds.value]
+
+		const result = await baseSubmitInvoice(targetDoctype.value, deliveryDate.value)
+
+		// If successful and we had a table with linked drafts, clean them up
+		if (result && tableToCleanup && draftIdsToCleanup.length > 0) {
+			try {
+				// Import draftsStore lazily to avoid circular dependency
+				const { usePOSDraftsStore } = await import('./posDrafts')
+				const draftsStore = usePOSDraftsStore()
+				await draftsStore.deleteAllDraftsForTable(tableToCleanup)
+			} catch (e) {
+				console.error("Failed to cleanup table drafts after payment:", e)
+			}
+		}
+
+		return result
 	}
 
 	async function createSalesOrder() {
@@ -1686,6 +1708,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		selectionMode,
 		suppressOfferReapply,
 		currentDraftId,
+		linkedDraftIds, // Track merged drafts for multi-order checkout cleanup
 		offerProcessingState, // Offer processing state for UI feedback
 
 		// Computed

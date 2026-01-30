@@ -108,23 +108,17 @@
                     </div>
 
                     <div v-if="table.status === 'Occupied'" class="mt-auto">
-                        <div class="text-[10px] font-bold truncate opacity-80">
-                    {{ 
-                        (() => {
-                            if (table.status !== 'Occupied' || !table.current_order) return (table.current_customer || __('No Customer'));
-                            const draft = draftsStore.drafts.find(d => d.name === table.current_order || d.draft_id === table.current_order || d.invoice_name === table.current_order);
-                            if (!draft) return (table.current_customer || __('No Customer'));
-                            
-                            // Handle customer object or string
-                            const customer = draft.customer;
-                            if (typeof customer === 'object' && customer !== null) {
-                                return customer.customer_name || customer.name || (table.current_customer || __('No Customer'));
-                            }
-                            return customer || table.current_customer || __('No Customer');
-                        })()
-                    }}
-                </div>
-                        <div class="text-[10px] truncate opacity-60">{{ table.current_order }}</div>
+                        <!-- Customer Name - prominently displayed -->
+                        <div class="text-sm font-bold truncate">
+                            {{ getTableCustomerName(table) }}
+                        </div>
+                        <!-- Order count badge -->
+                        <div class="flex items-center gap-2 mt-1">
+                            <span v-if="getTableOrderCount(table) > 1" class="px-1.5 py-0.5 bg-blue-500 text-white text-[9px] font-bold rounded-full">
+                                {{ getTableOrderCount(table) }} {{ __('orders') }}
+                            </span>
+                            <span v-else class="text-[10px] truncate opacity-60">{{ table.current_order }}</span>
+                        </div>
                     </div>
 
                     <div class="mt-auto flex justify-between items-center">
@@ -269,6 +263,46 @@ const getStatusClasses = (status) => {
         case 'Disabled': return 'bg-gray-100 border-gray-200 text-gray-400 grayscale'
         default: return 'bg-white border-gray-100 text-gray-500'
     }
+}
+
+/**
+ * Get the customer name for a table (from table or linked drafts)
+ */
+const getTableCustomerName = (table) => {
+    // First check table's current_customer field
+    if (table.current_customer) {
+        return table.current_customer
+    }
+    
+    // Then check linked drafts
+    if (table.current_order) {
+        const draft = draftsStore.drafts.find(d => 
+            d.name === table.current_order || 
+            d.draft_id === table.current_order || 
+            d.invoice_name === table.current_order
+        )
+        if (draft?.customer) {
+            const customer = draft.customer
+            if (typeof customer === 'object' && customer !== null) {
+                return customer.customer_name || customer.name || __('No Customer')
+            }
+            return customer
+        }
+    }
+    
+    return __('No Customer')
+}
+
+/**
+ * Get the number of orders linked to a table
+ */
+const getTableOrderCount = (table) => {
+    // Check orders array (new multi-order format)
+    if (Array.isArray(table.orders)) {
+        return table.orders.length
+    }
+    // Fallback to checking if current_order exists
+    return table.current_order ? 1 : 0
 }
 
 const onTableClick = (table) => {

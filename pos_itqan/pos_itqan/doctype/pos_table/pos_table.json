@@ -10,6 +10,7 @@
         "capacity",
         "status",
         "current_order",
+        "orders",
         "current_customer",
         "notes"
     ],
@@ -48,6 +49,13 @@
             "fieldname": "current_order",
             "fieldtype": "Data",
             "label": "Current Order",
+            "read_only": 1
+        },
+        {
+            "fieldname": "orders",
+            "fieldtype": "JSON",
+            "label": "Orders",
+            "description": "List of draft order IDs linked to this table",
             "read_only": 1
         },
         {
