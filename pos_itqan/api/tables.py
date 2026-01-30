@@ -5,13 +5,21 @@ import json
 @frappe.whitelist()
 def get_tables():
     """Returns all tables with their current status and active order details."""
+    # Check if 'orders' field exists (it may not if migrate hasn't been run)
+    has_orders_field = frappe.db.has_column("POS Table", "orders")
+    
+    fields = ["name", "table_name", "zone", "capacity", "status", "current_order", "current_customer", "notes"]
+    if has_orders_field:
+        fields.append("orders")
+    
     tables = frappe.get_all("POS Table", 
-        fields=["name", "table_name", "zone", "capacity", "status", "current_order", "orders", "current_customer", "notes"],
+        fields=fields,
         order_by="zone, table_name"
     )
+    
     # Parse orders JSON for each table
     for table in tables:
-        if table.get("orders"):
+        if has_orders_field and table.get("orders"):
             try:
                 table["orders"] = json.loads(table["orders"])
             except (json.JSONDecodeError, TypeError):
