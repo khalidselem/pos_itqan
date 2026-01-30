@@ -1141,7 +1141,7 @@ const printToKitchen = () => {
     const kitchenItems = items.map(item => ({
         item_name: item.item_name || item.item_code,
         qty: item.qty || item.quantity || 1,
-        notes: item.notes || item.description || ''
+        notes: item.notes || item.custom_notes || item.description || ''
     }))
     
     // Build kitchen ticket HTML directly (bypass item_group filter)

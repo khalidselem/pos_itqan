@@ -56,7 +56,7 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date(), is
     const itemsHTML = items.map(item => {
         const qty = item.quantity || item.qty || 1;
         const name = item.item_name || item.item_code;
-        const notes = item.notes || '';
+        const notes = item.notes || item.custom_notes || '';
         return `
             <tr>
                 <td style="font-size: 18px; font-weight: bold; padding: 4px 8px; vertical-align: top;">${qty}x</td>
