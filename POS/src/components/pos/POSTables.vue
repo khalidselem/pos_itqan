@@ -158,11 +158,11 @@
                                 </svg>
                             </span>
                         </div>
-                        <!-- Receive Button for Reserved tables -->
-                        <div v-if="table.status === 'Reserved'" class="mt-1">
+                        <!-- Actions for Reserved tables: Receive + Change Status -->
+                        <div v-if="table.status === 'Reserved'" class="mt-1 flex gap-1">
                             <button 
                                 @click="openReceiveModal(table, $event)"
-                                class="w-full p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded transition-colors border border-green-200"
+                                class="flex-1 p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded transition-colors border border-green-200"
                                 :title="__('Receive Table')"
                             >
                                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,18 +170,15 @@
                                 </svg>
                                 {{ __('Receive') }}
                             </button>
-                        </div>
-                        <!-- Change Status Button for Occupied tables -->
-                        <div v-if="table.status === 'Occupied'" class="mt-1">
                             <button 
                                 @click="openStatusChangeModal(table, $event)"
-                                class="w-full p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 rounded transition-colors border border-gray-200"
+                                class="flex-1 p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 rounded transition-colors border border-gray-200"
                                 :title="__('Change Status')"
                             >
                                 <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                                {{ __('Change Status') }}
+                                {{ __('Status') }}
                             </button>
                         </div>
                     </div>
