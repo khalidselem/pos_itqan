@@ -601,13 +601,11 @@ const selectCustomerForReservation = async (customer) => {
     const targetStatus = customerDialogMode.value === 'receive' ? 'Occupied' : 'Reserved'
     
     try {
-        await call('frappe.client.set_value', {
-            doctype: 'Restaurant Table',
-            name: tableToReserve.value.name,
-            fieldname: {
-                status: targetStatus,
-                current_customer: customer.name // Use ID (name) of customer
-            }
+        // Use the proper tables API to update status
+        await call('pos_itqan.api.tables.update_table_status', {
+            table: tableToReserve.value.name,
+            status: targetStatus,
+            current_customer: customer.customer_name || customer.name
         })
         
         // Refresh tables to show new status
