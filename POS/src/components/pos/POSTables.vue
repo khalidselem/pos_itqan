@@ -106,7 +106,7 @@
                         'hover:shadow-lg hover:-translate-y-1'
                     ]"
                 >
-                    <div class="flex justify-between items-start">
+                    <div class="flex flex-col items-center">
                         <span class="text-lg font-bold">{{ table.table_name }}</span>
                         <div class="flex items-center gap-1 text-[10px] opacity-70">
                             <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
