@@ -2560,6 +2560,18 @@ function handleManagementMenuClick(menuItem) {
 	}
 }
 
+async function handleCheckoutTable(table) {
+    // First load the table order (same logic as selecting it)
+    await handleTableSelected(table);
+    
+    // If table loaded successfully and has items, trigger payment
+    if (!cartStore.isEmpty) {
+        // Find main proceed payment button to trigger same logic?
+        // Or call handleProceedToPayment directly
+        handleProceedToPayment();
+    }
+}
+
 async function handleTableSelected(table) {
     uiStore.showTablesDialog = false;
 
