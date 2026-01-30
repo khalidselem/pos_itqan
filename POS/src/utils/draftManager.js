@@ -62,6 +62,13 @@ export async function saveDraft(invoiceData) {
 		...sanitizedInvoiceData,
 		created_at: new Date().toISOString(),
 		updated_at: new Date().toISOString(),
+		// Edit history tracking fields
+		is_edited: false,
+		edit_count: 0,
+		edit_history: [], // Array of { edited_at, edited_by, changes_summary }
+		order_status: 'requested', // requested | modified | sent_to_kitchen
+		last_edited_at: null,
+		original_created_at: new Date().toISOString(),
 	}
 
 	return new Promise((resolve, reject) => {
@@ -87,10 +94,29 @@ export async function updateDraft(draftId, invoiceData) {
 			}
 
 			const sanitizedInvoiceData = sanitizeDraftData(invoiceData) || {}
+
+			// Track edit history
+			const editHistory = existingDraft.edit_history || []
+			const isActualEdit = existingDraft.items?.length > 0 // Only count as edit if there were existing items
+
+			if (isActualEdit) {
+				editHistory.push({
+					edited_at: new Date().toISOString(),
+					edited_by: window.frappe?.session?.user || 'Unknown',
+					changes_summary: `Updated ${sanitizedInvoiceData.items?.length || 0} items`
+				})
+			}
+
 			const updatedDraft = {
 				...existingDraft,
 				...sanitizedInvoiceData,
 				updated_at: new Date().toISOString(),
+				// Update edit tracking fields
+				is_edited: isActualEdit ? true : existingDraft.is_edited,
+				edit_count: isActualEdit ? (existingDraft.edit_count || 0) + 1 : existingDraft.edit_count,
+				edit_history: editHistory,
+				last_edited_at: isActualEdit ? new Date().toISOString() : existingDraft.last_edited_at,
+				order_status: isActualEdit ? 'modified' : existingDraft.order_status,
 			}
 
 			const transaction = database.transaction([STORE_NAME], "readwrite")
@@ -188,5 +214,34 @@ export async function getDraftsCount() {
 
 		request.onsuccess = () => resolve(request.result)
 		request.onerror = () => reject(request.error)
+	})
+}
+
+// Update order status (requested | modified | sent_to_kitchen)
+export async function updateOrderStatus(draftId, newStatus) {
+	const database = await initDB()
+
+	return new Promise(async (resolve, reject) => {
+		try {
+			const existingDraft = await getDraftById(draftId)
+			if (!existingDraft) {
+				return reject(new Error("Draft not found"))
+			}
+
+			const updatedDraft = {
+				...existingDraft,
+				order_status: newStatus,
+				updated_at: new Date().toISOString(),
+			}
+
+			const transaction = database.transaction([STORE_NAME], "readwrite")
+			const store = transaction.objectStore(STORE_NAME)
+			const request = store.put(updatedDraft)
+
+			request.onsuccess = () => resolve(updatedDraft)
+			request.onerror = () => reject(request.error)
+		} catch (error) {
+			reject(error)
+		}
 	})
 }

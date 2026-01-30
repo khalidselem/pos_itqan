@@ -1,4 +1,4 @@
-import { deleteDraft, getDraftsCount, saveDraft, getAllDrafts, updateDraft } from "@/utils/draftManager"
+import { deleteDraft, getDraftsCount, saveDraft, getAllDrafts, updateDraft, updateOrderStatus } from "@/utils/draftManager"
 import { useToast } from "@/composables/useToast"
 import { call } from "@/utils/apiWrapper"
 import { printKitchenOrder } from "@/utils/kitchenPrint"
@@ -44,6 +44,39 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 			const draftTableName = typeof draftTable === 'object' ? draftTable.name : draftTable
 			return draftTableName === tableName
 		})
+	}
+
+	/**
+	 * Check if current user can edit previous orders
+	 * @param {string} posProfile - The POS Profile name
+	 * @returns {Promise<{can_edit: boolean, reason: string}>}
+	 */
+	async function canEditOrders(posProfile) {
+		if (!posProfile) {
+			return { can_edit: false, reason: __('No POS Profile specified') }
+		}
+		try {
+			const result = await call('pos_itqan.api.order_edit.can_edit_orders', {
+				pos_profile: posProfile
+			})
+			return result
+		} catch (error) {
+			console.error('Error checking edit permissions:', error)
+			return { can_edit: false, reason: __('Failed to check permissions') }
+		}
+	}
+
+	/**
+	 * Mark a draft order status as sent to kitchen
+	 * @param {string} draftId - The draft ID
+	 */
+	async function markAsSentToKitchen(draftId) {
+		try {
+			await updateOrderStatus(draftId, 'sent_to_kitchen')
+			await loadDrafts()
+		} catch (error) {
+			console.error('Error marking as sent to kitchen:', error)
+		}
 	}
 
 	async function saveDraftInvoice(
@@ -97,10 +130,12 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 			// Auto-print kitchen order if table is assigned
 			if (table) {
 				const tableDisplayName = table.table_name || table.name || table
+				const isModification = !!draftId && savedDraft.is_edited
 				try {
 					printKitchenOrder({
 						tableName: tableDisplayName,
-						items: invoiceItems
+						items: invoiceItems,
+						isModification: isModification
 					})
 				} catch (e) {
 					console.error('Kitchen print failed:', e)
@@ -200,5 +235,7 @@ export const usePOSDraftsStore = defineStore("posDrafts", () => {
 		deleteDraft: deleteDraftById,
 		getDraftsForTable,
 		deleteAllDraftsForTable,
+		canEditOrders,
+		markAsSentToKitchen,
 	}
 })

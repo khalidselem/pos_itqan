@@ -43,9 +43,10 @@ export function filterKitchenItems(items) {
  * @param {string} options.tableName - Table name/number
  * @param {Array} options.items - Kitchen items to print
  * @param {Date} options.time - Order time
+ * @param {boolean} options.isModification - Whether this is a modification of existing order
  * @returns {string} HTML string for printing
  */
-export function buildKitchenTicketHTML({ tableName, items, time = new Date() }) {
+export function buildKitchenTicketHTML({ tableName, items, time = new Date(), isModification = false }) {
     const timeStr = time.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
@@ -111,12 +112,22 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date() }) 
             margin-top: 10px;
             font-size: 12px;
         }
+        .modified-banner {
+            background: #FFD700;
+            color: #000;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 8px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
         @media print {
             body { -webkit-print-color-adjust: exact; }
         }
     </style>
 </head>
 <body>
+    ${isModification ? '<div class="modified-banner">🔄 MODIFIED ORDER</div>' : ''}
     <div class="header">
         <h1>🍳 Kitchen Order</h1>
         <div class="table-name">Table: ${tableName}</div>
@@ -139,9 +150,10 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date() }) 
  * @param {Object} options
  * @param {string} options.tableName - Table name
  * @param {Array} options.items - All cart items (will be filtered for kitchen items)
+ * @param {boolean} options.isModification - Whether this is a modification of existing order
  * @returns {boolean} True if print was triggered, false if no kitchen items
  */
-export function printKitchenOrder({ tableName, items }) {
+export function printKitchenOrder({ tableName, items, isModification = false }) {
     // Filter for kitchen items only
     const kitchenItems = filterKitchenItems(items);
 
@@ -153,7 +165,8 @@ export function printKitchenOrder({ tableName, items }) {
     // Build the ticket HTML
     const ticketHTML = buildKitchenTicketHTML({
         tableName: tableName || 'N/A',
-        items: kitchenItems
+        items: kitchenItems,
+        isModification: isModification
     });
 
     // Create hidden iframe for printing

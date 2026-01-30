@@ -46,6 +46,10 @@
         "return_validity_days",
         "allow_free_batch_return",
         "allow_print_draft_invoices",
+        "section_break_order_edit",
+        "allow_order_edit",
+        "order_edit_roles",
+        "column_break_order_edit",
         "section_break_pricing",
         "decimal_precision",
         "tax_inclusive",
@@ -358,6 +362,30 @@
             "fieldname": "allow_print_draft_invoices",
             "fieldtype": "Check",
             "label": "Allow Print Draft Invoices"
+        },
+        {
+            "collapsible": 1,
+            "fieldname": "section_break_order_edit",
+            "fieldtype": "Section Break",
+            "label": "Restaurant Order Editing"
+        },
+        {
+            "default": "0",
+            "description": "Allow editing of previous table orders. When enabled, authorized users can modify existing orders.",
+            "fieldname": "allow_order_edit",
+            "fieldtype": "Check",
+            "label": "Allow Order Edit"
+        },
+        {
+            "depends_on": "allow_order_edit",
+            "description": "Comma-separated list of roles allowed to edit orders (e.g., 'System Manager, Sales Manager'). Leave empty to allow all users.",
+            "fieldname": "order_edit_roles",
+            "fieldtype": "Small Text",
+            "label": "Order Edit Roles"
+        },
+        {
+            "fieldname": "column_break_order_edit",
+            "fieldtype": "Column Break"
         },
         {
             "collapsible": 1,
