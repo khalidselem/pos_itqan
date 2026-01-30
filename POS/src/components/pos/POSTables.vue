@@ -136,7 +136,7 @@
 
                     <div class="mt-auto flex justify-between items-center">
                         <span class="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-white/30">
-                            {{ table.status }}
+                            {{ getTranslatedStatus(table.status) }}
                         </span>
                     </div>
                 </div>
@@ -418,6 +418,19 @@ const getStatusClasses = (status) => {
         case 'Reserved': return 'bg-orange-50 border-orange-200 text-orange-700'
         case 'Disabled': return 'bg-gray-100 border-gray-200 text-gray-400 grayscale'
         default: return 'bg-white border-gray-100 text-gray-500'
+    }
+}
+
+/**
+ * Translate table status to current locale
+ */
+const getTranslatedStatus = (status) => {
+    switch (status) {
+        case 'Available': return __('Available')
+        case 'Occupied': return __('Occupied')
+        case 'Reserved': return __('Reserved')
+        case 'Disabled': return __('Disabled')
+        default: return status
     }
 }
 
