@@ -740,7 +740,7 @@ export function useInvoice() {
 			})),
 			discount_amount: additionalDiscount.value || 0,
 			coupon_code: couponCode.value,
-			custom_pos_table: currentTable.value,
+			custom_pos_table: currentTable.value?.name || currentTable.value,
 			is_pos: 1,
 			update_stock: 1,
 		}
@@ -795,7 +795,7 @@ export function useInvoice() {
 					})),
 					discount_amount: additionalDiscount.value || 0,
 					coupon_code: couponCode.value,
-					custom_pos_table: currentTable.value,
+					custom_pos_table: currentTable.value?.name || currentTable.value,
 					is_pos: 1,
 					update_stock: 1, // Critical: Ensures stock is updated
 				}

@@ -1898,7 +1898,7 @@ async function handlePaymentCompleted(paymentData) {
 
 			if (tableToRelease) {
 				call("pos_itqan.api.tables.update_table_status", {
-					table: tableToRelease,
+					table: tableToRelease.name || tableToRelease,
 					status: "Available",
 					current_order: null,
 					current_customer: null
@@ -1931,7 +1931,7 @@ async function handlePaymentCompleted(paymentData) {
 
 				if (tableToRelease) {
 					call("pos_itqan.api.tables.update_table_status", {
-						table: tableToRelease,
+						table: tableToRelease.name || tableToRelease,
 						status: "Available",
 						current_order: null,
 						current_customer: null

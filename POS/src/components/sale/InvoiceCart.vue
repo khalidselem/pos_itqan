@@ -1141,28 +1141,28 @@
 					<span>{{ __("Checkout") }}</span>
 				</button>
 
-				<!-- Hold Order Button (Secondary - 50% width) -->
+				<!-- Hold/Place Order Button -->
 				<button
 					type="button"
 					v-if="items.length > 0"
 					@click="$emit('save-draft')"
-					class="flex-1 py-2.5 px-2 rounded-lg font-semibold text-xs text-orange-700 bg-orange-50 hover:bg-orange-100 active:bg-orange-200 transition-all touch-manipulation active:scale-[0.98] flex items-center justify-center"
-					:aria-label="__('Hold order as draft')"
+					:class="[
+						'flex-1 py-2.5 px-2 rounded-lg font-semibold text-xs transition-all touch-manipulation active:scale-[0.98] flex items-center justify-center',
+						cartStore.currentTable 
+							? 'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white shadow-md' 
+							: 'text-orange-700 bg-orange-50 hover:bg-orange-100 active:bg-orange-200'
+					]"
+					:aria-label="cartStore.currentTable ? __('Place Order to Table') : __('Hold order as draft')"
 				>
-					<svg
-						class="w-4 h-4 me-1.5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						stroke-width="2"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-						/>
+					<!-- Icon for Place Order -->
+					<svg v-if="cartStore.currentTable" class="w-4 h-4 me-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
 					</svg>
-					<span>{{ __("Hold", null, "order") }}</span>
+					<!-- Icon for Hold -->
+					<svg v-else class="w-4 h-4 me-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+					</svg>
+					<span>{{ cartStore.currentTable ? __('Place Order') : __("Hold") }}</span>
 				</button>
 			</div>
 		</div>

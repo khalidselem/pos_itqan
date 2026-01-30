@@ -119,11 +119,73 @@
                     </div>
                 </div>
 
-                <!-- Quick Action Overlay -->
-                <!-- <div class="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl pointer-events-none"></div> -->
+                <!-- Quick Action Overlay & Button -->
+                <div v-if="table.status === 'Occupied'" class="absolute top-2 right-2 z-10">
+                    <button 
+                        @click="viewOrder(table, $event)"
+                        class="p-1.5 bg-white/90 hover:bg-white text-gray-600 hover:text-blue-600 rounded-full shadow-sm transition-colors border border-gray-100"
+                        :title="__('View Order Details')"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm-3 8c-7 0-9-5-9-5s2-5 9-5 9 5 9 5-2 5-9 5z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
       </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div v-if="showDetailsModal && selectedTableOrder" class="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="closeDetailsModal">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up border border-gray-100">
+            <div class="px-6 py-4 border-b bg-gray-50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900">{{ selectedTableOrder.tableName }}</h3>
+                    <p class="text-sm text-gray-500">{{ selectedTableOrder.customer || __('No Customer') }}</p>
+                </div>
+                <button @click="closeDetailsModal" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div v-if="selectedTableOrder.items.length === 0" class="text-center text-gray-400 py-8 flex flex-col items-center">
+                    <div class="p-3 bg-gray-50 rounded-full mb-3">
+                        <svg class="w-6 h-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                    </div>
+                    {{ __('No items in this order') }}
+                </div>
+                <ul v-else class="space-y-3">
+                    <li v-for="(item, idx) in selectedTableOrder.items" :key="idx" class="flex justify-between items-start text-sm group">
+                        <div class="flex gap-3">
+                            <span class="font-bold text-gray-500 w-6 pt-0.5">{{ item.qty || item.quantity }}x</span>
+                            <div class="flex flex-col">
+                                <p class="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">{{ item.item_name || item.item_code }}</p>
+                                <p v-if="item.description && item.description !== item.item_name" class="text-[10px] text-gray-400 truncate max-w-[180px]">{{ item.description }}</p>
+                            </div>
+                        </div>
+                        <span class="font-semibold text-gray-900">{{ formatCurrency(item.amount || ((item.qty || item.quantity) * (item.rate || item.price_list_rate))) }}</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="px-6 py-4 border-t bg-gray-50 flex flex-col gap-3">
+                <div class="flex justify-between items-center text-lg font-bold text-gray-900">
+                    <span>{{ __('Total') }}</span>
+                    <span class="text-emerald-600">{{ formatCurrency(selectedTableOrder.total) }}</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button @click="closeDetailsModal" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors">
+                        {{ __('Close') }}
+                    </button>
+                    <button @click="submitOrderFromDetails" class="px-4 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-sm hover:shadow-md flex items-center justify-center gap-2">
+                        <span>{{ __('Open Order') }}</span>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
   </div>
 </template>
@@ -132,14 +194,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { call } from '@/utils/apiWrapper'
 import { useFormatters } from '@/composables/useFormatters'
+import { usePOSDraftsStore } from '@/stores/posDrafts'
 
 const emit = defineEmits(['close', 'table-selected'])
 const { formatCurrency } = useFormatters()
+const draftsStore = usePOSDraftsStore()
 
 const tables = ref([])
 const zones = ref([])
 const loading = ref(true)
 const selectedZone = ref('All')
+
+// Order details state
+const showDetailsModal = ref(false)
+const selectedTableOrder = ref(null)
 
 const fetchData = async () => {
     loading.value = true
@@ -150,6 +218,8 @@ const fetchData = async () => {
         ])
         tables.value = tablesRes || []
         zones.value = zonesRes || []
+        // Ensure drafts are loaded to cross-reference orders
+        await draftsStore.loadDrafts()
     } catch (e) {
         console.error("Fetch Tables Error:", e)
     } finally {
@@ -165,7 +235,7 @@ const filteredTables = computed(() => {
 const getStatusClasses = (status) => {
     switch (status) {
         case 'Available': return 'bg-white border-emerald-100 text-emerald-700'
-        case 'Occupied': return 'bg-red-50 border-red-200 text-red-700'
+        case 'Occupied': return 'bg-white border-red-200 shadow-sm'
         case 'Reserved': return 'bg-orange-50 border-orange-200 text-orange-700'
         case 'Disabled': return 'bg-gray-100 border-gray-200 text-gray-400 grayscale'
         default: return 'bg-white border-gray-100 text-gray-500'
@@ -175,6 +245,50 @@ const getStatusClasses = (status) => {
 const onTableClick = (table) => {
     if (table.status === 'Disabled') return
     emit('table-selected', table)
+}
+
+const viewOrder = (table, event) => {
+    event.stopPropagation() // Prevent selecting table immediately
+    
+    // Find the draft for this table
+    const draftId = table.current_order
+    const draft = draftsStore.drafts.find(d => d.name === draftId || d.draft_id === draftId || d.invoice_name === draftId)
+    
+    if (draft) {
+        // Calculate total
+        const total = (draft.items || []).reduce((sum, item) => {
+            const qty = item.qty || item.quantity || 0
+            const rate = item.rate || item.price_list_rate || 0
+            return sum + (qty * rate)
+        }, 0)
+
+        selectedTableOrder.value = {
+            tableName: table.table_name,
+            items: draft.items || [],
+            customer: draft.customer_name || draft.customer || table.current_customer,
+            total,
+            status: 'Unpaid'
+        }
+        showDetailsModal.value = true
+    } else {
+        // Fallback if draft not found locally (maybe needs fetch)
+        console.warn("Draft not found locally for table:", table.table_name)
+        // Could implement single fetch here if needed
+    }
+}
+
+const closeDetailsModal = () => {
+    showDetailsModal.value = false
+    selectedTableOrder.value = null
+}
+
+const submitOrderFromDetails = () => {
+    // Select the table to load it into cart
+    const table = tables.value.find(t => t.table_name === selectedTableOrder.value.tableName)
+    if (table) {
+        emit('table-selected', table)
+    }
+    closeDetailsModal()
 }
 
 onMounted(fetchData)
