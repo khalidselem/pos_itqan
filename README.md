@@ -159,7 +159,7 @@ POS Next is a **complete rewrite** of the ERPNext POS system, built from the gro
 cd ~/frappe-bench
 
 # Get the app from GitHub
-bench get-app https://github.com/BrainWise-DEV/pos_next.git --branch develop
+bench get-app https://github.com/khalidselem/pos_itqan.git --branch main
 
 # Install on your site
 bench --site [your-site-name] install-app pos_next
@@ -449,7 +449,17 @@ Built with amazing open-source technologies:
 
 ## 📝 Changelog
 
-### v1.6.1 (Latest)
+### v1.14.0 (Latest)
+- **Table Management**: Added "Receive Table" feature to seat customers directly (sets status to Occupied) with received time tracking
+- **UI Enhancements**:
+  - Red badges for modified orders
+  - Compact table card layout with stacked action buttons
+  - Received time display on table cards (e.g., "🕐 14:30")
+- **Reports**: Added Table Details, Order Edits, and Received Tables reports
+- **Kitchen**: Added support for item notes in kitchen printing
+- **General**: Default customer group set to "Commercial" (تجاري)
+
+### v1.6.1
 - Enhanced partial payments with overdue status tracking
 - Major backend refactoring for better maintainability
 - Performance improvements
@@ -484,7 +494,7 @@ Coming soon:
 
 <div align="center">
 
-**Made with ❤️ by [BrainWise](https://nexus.brainwise.me)**
+**Made with ❤️ by [ITQAN](https://itqan-kw.com)**
 
 ⭐ Star us on GitHub — it motivates us a lot!
 
