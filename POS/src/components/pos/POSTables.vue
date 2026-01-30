@@ -171,6 +171,19 @@
                                 {{ __('Receive') }}
                             </button>
                         </div>
+                        <!-- Change Status Button for Occupied tables -->
+                        <div v-if="table.status === 'Occupied'" class="mt-1">
+                            <button 
+                                @click="openStatusChangeModal(table, $event)"
+                                class="w-full p-1 px-1.5 flex justify-center items-center gap-0.5 text-[8px] font-medium bg-gray-50 text-gray-700 hover:bg-gray-100 rounded transition-colors border border-gray-200"
+                                :title="__('Change Status')"
+                            >
+                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                {{ __('Change Status') }}
+                            </button>
+                        </div>
                     </div>
 
                     <div class="mt-auto">
@@ -504,6 +517,41 @@
             </div>
         </div>
     </div>
+    <!-- Status Change Modal -->
+    <div v-if="showStatusChangeDialog" class="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="closeStatusChangeDialog">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-up border border-gray-100">
+            <div class="px-5 py-3 border-b flex items-center justify-between bg-gray-50">
+                <h3 class="text-base font-bold text-gray-900">{{ __('Change Table Status') }}</h3>
+                <button @click="closeStatusChangeDialog" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <div class="p-5 flex flex-col gap-3">
+                <p class="text-sm text-gray-600 mb-2">{{ __('Select new status for') }} <b>{{ tableToReserve?.table_name }}</b>:</p>
+                
+                <button @click="changeTableStatus('Available')" class="w-full py-3 px-4 flex items-center gap-3 rounded-lg border border-gray-200 hover:bg-green-50 hover:border-green-200 transition-all group">
+                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 group-hover:bg-green-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-bold text-gray-900 group-hover:text-green-700">{{ __('Available') }}</div>
+                        <div class="text-[10px] text-gray-500">{{ __('Clear table and make it free') }}</div>
+                    </div>
+                </button>
+                
+                <button @click="changeTableStatus('Reserved')" class="w-full py-3 px-4 flex items-center gap-3 rounded-lg border border-gray-200 hover:bg-amber-50 hover:border-amber-200 transition-all group">
+                    <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 group-hover:bg-amber-200">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </div>
+                    <div class="text-left">
+                        <div class="font-bold text-gray-900 group-hover:text-amber-700">{{ __('Reserved') }}</div>
+                        <div class="text-[10px] text-gray-500">{{ __('Mark as reserved for customer') }}</div>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup>
@@ -543,6 +591,7 @@ const selectedPrintItems = ref([]) // Array of uniqueIds
 const showCustomerDialog = ref(false)
 const tableToReserve = ref(null)
 const customerDialogMode = ref('reserve') // 'reserve' or 'receive'
+const showStatusChangeDialog = ref(false)
 const customerSearchTerm = ref('')
 const allCustomersList = ref([])
 const loadingCustomers = ref(false)
@@ -582,6 +631,37 @@ const openReceiveModal = async (table, event) => {
     // Load customers if not already loaded
     if (allCustomersList.value.length === 0) {
         await loadCustomersList()
+    }
+}
+
+const openStatusChangeModal = (table, event) => {
+    event.stopPropagation()
+    tableToReserve.value = table // Reuse tableToReserve for simplicity
+    showStatusChangeDialog.value = true
+}
+
+const closeStatusChangeDialog = () => {
+    showStatusChangeDialog.value = false
+    tableToReserve.value = null
+}
+
+const changeTableStatus = async (newStatus) => {
+    if (!tableToReserve.value) return
+    
+    try {
+        await call('pos_itqan.api.tables.update_table_status', {
+            table: tableToReserve.value.name,
+            status: newStatus,
+            // Keep customer if occupied, clear otherwise
+            current_customer: newStatus === 'Occupied' ? tableToReserve.value.current_customer : null,
+            // If becoming available, clear orders
+            clear_all_orders: newStatus === 'Available'
+        })
+        
+        await fetchData()
+        closeStatusChangeDialog()
+    } catch (e) {
+        console.error('Failed to update status:', e)
     }
 }
 
