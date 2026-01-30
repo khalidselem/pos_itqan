@@ -393,22 +393,91 @@
         </div>
     </div>
   </div>
-    <!-- Customer Selection Dialog for Reservation -->
-    <CustomerDialog
-        v-model="showCustomerDialog"
-        :pos-profile="settingsStore.settings.pos_profile"
-        @customer-selected="handleCustomerSelected"
-    />
+    <!-- Inline Customer Selection Modal for Reservation (z-[600] to appear above tables modal z-[500]) -->
+    <div v-if="showCustomerDialog" class="fixed inset-0 z-[600] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" @click.self="closeCustomerDialog">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-scale-up border border-gray-100">
+            <!-- Header -->
+            <div class="px-5 py-3 border-b bg-amber-50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        {{ __('Reserve Table') }}
+                    </h3>
+                    <p class="text-xs text-gray-500">{{ tableToReserve?.table_name }} - {{ __('Select Customer') }}</p>
+                </div>
+                <button @click="closeCustomerDialog" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <!-- Search Input -->
+            <div class="p-4 border-b">
+                <div class="relative">
+                    <svg class="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input 
+                        v-model="customerSearchTerm"
+                        type="text"
+                        :placeholder="__('Search customers by name or mobile...')"
+                        class="w-full ps-9 pe-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                        @input="searchCustomers"
+                        autofocus
+                    />
+                </div>
+            </div>
+            
+            <!-- Customer List -->
+            <div class="max-h-64 overflow-y-auto">
+                <div v-if="loadingCustomers" class="flex items-center justify-center py-8">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+                </div>
+                <div v-else-if="filteredCustomersList.length === 0" class="text-center py-8 text-gray-400">
+                    <svg class="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <p class="text-sm">{{ __('No customers found') }}</p>
+                </div>
+                <div v-else class="divide-y">
+                    <button 
+                        v-for="customer in filteredCustomersList" 
+                        :key="customer.name"
+                        @click="selectCustomerForReservation(customer)"
+                        class="w-full px-4 py-3 text-start hover:bg-amber-50 transition-colors flex items-center gap-3"
+                    >
+                        <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold text-sm">
+                            {{ (customer.customer_name || customer.name).charAt(0).toUpperCase() }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-medium text-gray-900 text-sm truncate">{{ customer.customer_name || customer.name }}</div>
+                            <div v-if="customer.mobile_no" class="text-xs text-gray-500">📱 {{ customer.mobile_no }}</div>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-4 py-3 border-t bg-gray-50">
+                <button @click="closeCustomerDialog" class="w-full px-4 py-2 bg-white border border-gray-300 text-gray-700 font-medium text-sm rounded-lg hover:bg-gray-50 transition-colors">
+                    {{ __('Cancel') }}
+                </button>
+            </div>
+        </div>
+    </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { call } from '@/utils/apiWrapper'
 import { useFormatters } from '@/composables/useFormatters'
 import { usePOSDraftsStore } from '@/stores/posDrafts'
 import { usePOSSettingsStore } from '@/stores/posSettings'
 import { printKitchenOrder, buildKitchenTicketHTML } from '@/utils/kitchenPrint'
-import CustomerDialog from '@/components/sale/CustomerDialog.vue'
 
 const emit = defineEmits(['close', 'table-selected', 'checkout-table'])
 const { formatCurrency } = useFormatters()
@@ -435,17 +504,66 @@ const currentTableDrafts = ref([])
 const showPrintModal = ref(false)
 const selectedPrintItems = ref([]) // Array of uniqueIds
 
-// Reservation state
+// Reservation state - inline customer selection
 const showCustomerDialog = ref(false)
 const tableToReserve = ref(null)
+const customerSearchTerm = ref('')
+const allCustomersList = ref([])
+const loadingCustomers = ref(false)
 
-const openReserveModal = (table, event) => {
+const filteredCustomersList = computed(() => {
+    if (!customerSearchTerm.value.trim()) {
+        return allCustomersList.value.slice(0, 20) // Show first 20 by default
+    }
+    const term = customerSearchTerm.value.toLowerCase()
+    return allCustomersList.value.filter(c => {
+        const name = (c.customer_name || c.name || '').toLowerCase()
+        const mobile = (c.mobile_no || '').toLowerCase()
+        return name.includes(term) || mobile.includes(term)
+    }).slice(0, 30)
+})
+
+const openReserveModal = async (table, event) => {
     event.stopPropagation()
     tableToReserve.value = table
+    customerSearchTerm.value = ''
     showCustomerDialog.value = true
+    
+    // Load customers if not already loaded
+    if (allCustomersList.value.length === 0) {
+        await loadCustomersList()
+    }
 }
 
-const handleCustomerSelected = async (customer) => {
+const loadCustomersList = async () => {
+    loadingCustomers.value = true
+    try {
+        const result = await call('frappe.client.get_list', {
+            doctype: 'Customer',
+            fields: ['name', 'customer_name', 'mobile_no'],
+            filters: { disabled: 0 },
+            limit_page_length: 500,
+            order_by: 'customer_name asc'
+        })
+        allCustomersList.value = result || []
+    } catch (e) {
+        console.error('Failed to load customers:', e)
+    } finally {
+        loadingCustomers.value = false
+    }
+}
+
+const searchCustomers = () => {
+    // The computed property handles filtering
+}
+
+const closeCustomerDialog = () => {
+    showCustomerDialog.value = false
+    tableToReserve.value = null
+    customerSearchTerm.value = ''
+}
+
+const selectCustomerForReservation = async (customer) => {
     if (!tableToReserve.value) return
     
     try {
@@ -464,8 +582,7 @@ const handleCustomerSelected = async (customer) => {
     } catch (e) {
         console.error('Failed to reserve table:', e)
     } finally {
-        tableToReserve.value = null
-        showCustomerDialog.value = false
+        closeCustomerDialog()
     }
 }
 
