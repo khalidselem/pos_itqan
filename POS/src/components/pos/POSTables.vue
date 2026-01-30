@@ -225,30 +225,37 @@
                     <span>{{ __('Total') }}</span>
                     <span class="text-emerald-600">{{ formatCurrency(selectedTableOrder.total) }}</span>
                 </div>
-                <div class="grid grid-cols-5 gap-1">
-                    <button @click="closeDetailsModal" class="px-1.5 py-1.5 bg-white border border-gray-300 text-gray-700 font-semibold text-[9px] rounded-lg hover:bg-gray-50 transition-colors">
+                <div class="grid grid-cols-6 gap-1">
+                    <button @click="closeDetailsModal" class="px-1 py-1.5 bg-white border border-gray-300 text-gray-700 font-semibold text-[8px] rounded-lg hover:bg-gray-50 transition-colors">
                         {{ __('Close') }}
                     </button>
                     <button 
                         @click="openPrintSelection" 
-                        class="px-1.5 py-1.5 bg-purple-500 text-white font-semibold text-[9px] rounded-lg hover:bg-purple-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                        class="px-1 py-1.5 bg-purple-500 text-white font-semibold text-[8px] rounded-lg hover:bg-purple-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
                     >
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                         <span>{{ __('Print') }}</span>
                     </button>
                     <button 
+                        @click="printToKitchen" 
+                        class="px-1 py-1.5 bg-orange-500 text-white font-semibold text-[8px] rounded-lg hover:bg-orange-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                    >
+                        <span>🍳</span>
+                        <span>{{ __('Kitchen') }}</span>
+                    </button>
+                    <button 
                         v-if="canEditOrder"
                         @click="editOrderFromDetails" 
-                        class="px-1.5 py-1.5 bg-amber-500 text-white font-semibold text-[9px] rounded-lg hover:bg-amber-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                        class="px-1 py-1.5 bg-amber-500 text-white font-semibold text-[8px] rounded-lg hover:bg-amber-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
                     >
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         <span>{{ __('Edit') }}</span>
                     </button>
-                    <button @click="submitOrderFromDetails" class="px-1.5 py-1.5 bg-blue-600 text-white font-semibold text-[9px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
+                    <button @click="submitOrderFromDetails" class="px-1 py-1.5 bg-blue-600 text-white font-semibold text-[8px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         <span>{{ __('Open') }}</span>
                     </button>
-                    <button @click="checkoutFromDetails" class="px-1.5 py-1.5 bg-green-600 text-white font-semibold text-[9px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
+                    <button @click="checkoutFromDetails" class="px-1 py-1.5 bg-green-600 text-white font-semibold text-[8px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
                         <span>{{ __('Pay') }}</span>
                     </button>
@@ -354,6 +361,7 @@ import { ref, computed, onMounted } from 'vue'
 import { call } from '@/utils/apiWrapper'
 import { useFormatters } from '@/composables/useFormatters'
 import { usePOSDraftsStore } from '@/stores/posDrafts'
+import { printKitchenOrder } from '@/utils/kitchenPrint'
 
 const emit = defineEmits(['close', 'table-selected', 'checkout-table'])
 const { formatCurrency } = useFormatters()
@@ -861,6 +869,35 @@ const printSelectedItems = () => {
     }
     
     closePrintModal()
+}
+
+/**
+ * Print current order to kitchen
+ */
+const printToKitchen = () => {
+    if (!selectedTableOrder.value) return
+    
+    const tableName = selectedTableOrder.value.tableName || 'Table'
+    const items = selectedTableOrder.value.items || []
+    const isEdited = selectedTableOrder.value.isEdited || false
+    
+    if (items.length === 0) {
+        console.warn('No items to print to kitchen')
+        return
+    }
+    
+    // Format items for kitchen print
+    const kitchenItems = items.map(item => ({
+        item_name: item.item_name || item.item_code,
+        qty: item.qty || item.quantity || 1,
+        notes: item.notes || item.description || ''
+    }))
+    
+    printKitchenOrder({
+        tableName,
+        items: kitchenItems,
+        isModification: isEdited
+    })
 }
 
 onMounted(fetchData)
