@@ -21,8 +21,112 @@ def validate(doc, method=None):
 		doc: Sales Invoice document
 		method: Hook method name (unused)
 	"""
-	apply_tax_inclusive(doc)
 	auto_assign_loyalty_program_on_invoice(doc)
+	set_source_warehouse_from_pos_profile(doc)
+
+def before_validate(doc, method=None):
+	"""
+	Runs BEFORE standard Frappe validation.
+	Dynamically sets `item_tax_rate` to 0% for items that do not have a VAT template.
+	This flawlessly informs ERPNext's standard calculated_taxes_and_totals logic
+	to completely ignore these items for VAT, preserving all base and rounding math natively.
+	"""
+	apply_tax_inclusive(doc)
+
+	if not doc.is_pos or not doc.get("taxes"):
+		return
+		
+	try:
+		import json
+		import frappe
+		
+		item_codes = [item.item_code for item in doc.get("items") if item.item_code]
+		if not item_codes:
+			return
+			
+		# 1. Check child table 'Item Tax' (Explicitly for Items)
+		tax_results = frappe.db.sql(
+			"SELECT DISTINCT parent FROM `tabItem Tax` WHERE parent IN %s AND parenttype = 'Item'",
+			(tuple(item_codes),),
+		)
+		items_with_tax = {row[0] for row in tax_results}
+		
+		# 2. Check Item master to get their Item Groups
+		item_details = frappe.get_all(
+			"Item",
+			filters={"name": ["in", item_codes]},
+			fields=["name", "item_group"]
+		)
+		
+		item_to_group = {}
+		for row in item_details:
+			if row.get("item_group"):
+				item_to_group[row["name"]] = row["item_group"]
+				
+		# 3. Check Item Group templates
+		if item_to_group:
+			groups = list(set(item_to_group.values()))
+			group_templates = frappe.get_all(
+				"Item Tax",
+				filters={"parent": ["in", groups], "parenttype": "Item Group"},
+				fields=["parent"]
+			)
+			groups_with_tax = {row["parent"] for row in group_templates}
+			
+			for item_code, group_name in item_to_group.items():
+				if group_name in groups_with_tax:
+					items_with_tax.add(item_code)
+		
+		# If the entire invoice has NO VAT items, wipe taxes completely.
+		has_any_vat_item = any(item.item_code in items_with_tax for item in doc.get("items"))
+		if not has_any_vat_item:
+			doc.taxes_and_charges = None
+			doc.set("taxes", [])
+			return
+
+		# Fetch the upcoming tax accounts proactively.
+		# `doc.taxes` is usually empty this early in the lifecycle before Frappe's set_missing_values.
+		pending_tax_accounts = []
+		if doc.taxes_and_charges:
+			template_taxes = frappe.db.get_all(
+				"Sales Taxes and Charges",
+				filters={"parent": doc.taxes_and_charges},
+				fields=["account_head"]
+			)
+			pending_tax_accounts = [t.account_head for t in template_taxes if t.account_head]
+		else:
+			pending_tax_accounts = [t.account_head for t in doc.get("taxes") if t.account_head]
+
+		frappe.log_error(f"tax_inclusive: {doc.get('tax_inclusive')}, items_with_tax: {items_with_tax}, pending_tax_accounts: {pending_tax_accounts}", "POS Debug Before")
+
+		if not pending_tax_accounts:
+			return
+
+		# Otherwise, inject 0% on Non-VAT rows
+		for item in doc.get("items"):
+			is_taxable = item.item_code in items_with_tax
+			frappe.log_error(f"Processing Item: {item.item_code}, Is Taxable: {is_taxable}", "POS Debug Item")
+			
+			if not is_taxable:
+				current_overrides = {}
+				if item.item_tax_rate:
+					try:
+						current_overrides = json.loads(item.item_tax_rate)
+					except Exception:
+						pass
+				
+				has_changes = False
+				for account_head in pending_tax_accounts:
+					if account_head and account_head not in current_overrides:
+						current_overrides[account_head] = 0
+						has_changes = True
+				
+				if has_changes:
+					item.item_tax_rate = json.dumps(current_overrides)
+					frappe.log_error(f"Injected 0% for {item.item_code}: {item.item_tax_rate}", "POS Debug Injected")
+					
+	except Exception as e:
+		frappe.log_error(f"Error in VAT Override Hook: {e}\n{frappe.get_traceback()}", "POS VAT Override Error")
 
 
 def apply_tax_inclusive(doc):
@@ -116,6 +220,34 @@ def auto_assign_loyalty_program_on_invoice(doc):
 		loyalty_program,
 		update_modified=False
 	)
+
+
+def set_source_warehouse_from_pos_profile(doc):
+	"""
+	Set Source Warehouse from POS Profile warehouse.
+
+	When a Sales Invoice is created via POS, automatically populate
+	the set_warehouse field from the POS Profile's warehouse setting.
+
+	Args:
+		doc: Sales Invoice document
+	"""
+	if not doc.pos_profile:
+		return
+
+	# Only set if not already manually specified
+	if doc.set_warehouse:
+		return
+
+	try:
+		warehouse = frappe.db.get_value(
+			"POS Profile", doc.pos_profile, "warehouse"
+		)
+		if warehouse:
+			doc.set_warehouse = warehouse
+			doc.update_stock = 1
+	except Exception:
+		pass
 
 
 def before_cancel(doc, method=None):

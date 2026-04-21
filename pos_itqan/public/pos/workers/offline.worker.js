@@ -557,7 +557,7 @@ async function searchCachedItems(searchTerm = "", limit = 50) {
 
 		const results = allItems
 			.map(item => {
-				const searchable = `${item.item_code || ""} ${item.item_name || ""} ${item.description || ""}`.toLowerCase()
+				const searchable = `${item.item_code || ""} ${item.item_name || ""} ${item.item_arabic || ""} ${item.description || ""}`.toLowerCase()
 
 				// All words must match
 				if (!searchWords.every(word => searchable.includes(word))) {
@@ -568,8 +568,10 @@ async function searchCachedItems(searchTerm = "", limit = 50) {
 				let score = 100
 				if (item.item_name?.toLowerCase() === term) score = 1000
 				else if (item.item_code?.toLowerCase() === term) score = 900
+				else if (item.item_arabic?.includes(term)) score = 800
 				else if (item.item_name?.toLowerCase().startsWith(term)) score = 500
 				else if (item.item_code?.toLowerCase().startsWith(term)) score = 400
+				else if (item.item_arabic?.includes(term)) score = 350
 
 				return { item, score }
 			})

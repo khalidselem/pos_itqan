@@ -145,6 +145,10 @@
                         <div v-if="table.received_at" class="text-[8px] opacity-60">
                             🕐 {{ formatReceivedTime(table.received_at) }}
                         </div>
+                        <!-- Notes for Reserved tables -->
+                        <div v-if="table.status === 'Reserved' && table.notes" class="text-[8px] text-amber-700 truncate" :title="table.notes">
+                            📝 {{ table.notes }}
+                        </div>
                         <!-- Order info + edit indicator (Occupied only) -->
                         <div v-if="table.status === 'Occupied'" class="flex items-center gap-1.5 mt-0.5">
                             <span v-if="getTableOrderCount(table) > 1" class="px-1 py-0.5 bg-blue-500 text-white text-[8px] font-bold rounded-full">
@@ -192,17 +196,6 @@
                         </div>
                         <!-- Action Buttons for Available tables -->
                         <div v-if="table.status === 'Available'" class="flex items-center gap-1">
-                            <!-- Reserve Button -->
-                            <button 
-                                @click="openReserveModal(table, $event)"
-                                class="p-1 px-1.5 flex items-center gap-0.5 text-[8px] font-medium bg-amber-50 text-amber-700 hover:bg-amber-100 rounded transition-colors border border-amber-200"
-                                :title="__('Reserve Table')"
-                            >
-                                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                                {{ __('Reserve') }}
-                            </button>
                             <!-- Receive Button (Seat Customer) -->
                             <button 
                                 @click="openReceiveModal(table, $event)"
@@ -271,7 +264,7 @@
                     class="px-2 py-1 text-[10px] border border-gray-200 rounded-lg bg-white me-2"
                 >
                     <option v-for="(_, idx) in selectedTableOrder.orderCount" :key="idx" :value="idx">
-                        {{ __('Order') }} {{ idx + 1 }}
+                        {{ __('Order') }} {{ selectedTableOrder.orderCount - idx }}
                     </option>
                 </select>
                 <button @click="closeDetailsModal" class="p-1 hover:bg-gray-200 rounded-full transition-colors">
@@ -318,27 +311,51 @@
                     </button>
                     <button 
                         @click="printToKitchen" 
-                        class="px-1 py-1.5 bg-orange-500 text-white font-semibold text-[8px] rounded-lg hover:bg-orange-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                        :disabled="selectedTableOrder.isLocked"
+                        :class="selectedTableOrder.isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'"
+                        class="px-1 py-1.5 bg-orange-500 text-white font-semibold text-[8px] rounded-lg transition-colors shadow-sm flex items-center justify-center gap-0.5"
                     >
                         <span>🍳</span>
                         <span>{{ __('Kitchen') }}</span>
                     </button>
                     <button 
-                        v-if="canEditOrder"
+                        v-if="canEditOrder && !selectedTableOrder.isLocked"
                         @click="editOrderFromDetails" 
                         class="px-1 py-1.5 bg-amber-500 text-white font-semibold text-[8px] rounded-lg hover:bg-amber-600 transition-colors shadow-sm flex items-center justify-center gap-0.5"
                     >
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                         <span>{{ __('Edit') }}</span>
                     </button>
-                    <button @click="submitOrderFromDetails" class="px-1 py-1.5 bg-blue-600 text-white font-semibold text-[8px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
+                    <button 
+                        v-if="!selectedTableOrder.isLocked"
+                        @click="submitOrderFromDetails" 
+                        class="px-1 py-1.5 bg-blue-600 text-white font-semibold text-[8px] rounded-lg hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                    >
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         <span>{{ __('Open') }}</span>
                     </button>
-                    <button @click="checkoutFromDetails" class="px-1 py-1.5 bg-green-600 text-white font-semibold text-[8px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-0.5">
+                    <button 
+                        v-if="!selectedTableOrder.isLocked"
+                        @click="checkoutFromDetails" 
+                        class="px-1 py-1.5 bg-green-600 text-white font-semibold text-[8px] rounded-lg hover:bg-green-700 transition-colors shadow-sm flex items-center justify-center gap-0.5"
+                    >
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
                         <span>{{ __('Pay') }}</span>
                     </button>
+                    <span 
+                        v-if="selectedTableOrder.isPaid"
+                        class="col-span-2 px-2 py-1.5 bg-emerald-100 text-emerald-700 font-semibold text-[10px] rounded-lg flex items-center justify-center gap-1"
+                    >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        {{ __('Paid') }}
+                    </span>
+                    <span 
+                        v-else-if="selectedTableOrder.isLocked"
+                        class="col-span-2 px-2 py-1.5 bg-amber-100 text-amber-700 font-semibold text-[10px] rounded-lg flex items-center justify-center gap-1"
+                    >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        {{ __('Locked') }}
+                    </span>
                 </div>
             </div>
         </div>
@@ -610,6 +627,7 @@ const canEditOrder = ref(false)
 
 // Store all drafts for the selected table for order switching
 const currentTableDrafts = ref([])
+const currentViewingTable = ref(null)
 
 // Print modal state
 const showPrintModal = ref(false)
@@ -734,7 +752,8 @@ const selectCustomerForReservation = async (customer) => {
     if (!tableToReserve.value) return
     
     // Determine target status based on mode
-    const targetStatus = customerDialogMode.value === 'receive' ? 'Occupied' : 'Reserved'
+    // Both 'receive' and 'reserve' go to Reserved status
+    const targetStatus = 'Reserved'
     
     try {
         // Use the proper tables API to update status
@@ -915,18 +934,15 @@ const formatReceivedTime = (isoString) => {
     const timeStr = date.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: false
+        hour12: true
     })
-    
-    if (isToday) {
-        return timeStr
-    }
     
     const dateStr = date.toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric'
     })
-    return `${dateStr} ${timeStr}`
+    
+    return `${dateStr}, ${timeStr}`
 }
 
 /**
@@ -972,11 +988,31 @@ const viewOrder = async (table, event) => {
     }
     
     if (tableDrafts.length > 0) {
-        // Sort drafts by creation time (newest first)
+        // Sort drafts: editable orders first (modified), then locked orders (requested/sent_to_kitchen)
+        // Within each group, sort by date (newest first)
+        const getStatusPriority = (status) => {
+            // Lower number = higher priority (shows first)
+            if (status === 'modified') return 0
+            if (status === 'requested') return 1
+            if (status === 'sent_to_kitchen') return 2
+            return 3 // unknown status
+        }
+        
         const sortedDrafts = [...tableDrafts].sort((a, b) => {
+            const statusA = a.order_status || 'requested'
+            const statusB = b.order_status || 'requested'
+            const priorityA = getStatusPriority(statusA)
+            const priorityB = getStatusPriority(statusB)
+            
+            // First sort by status priority
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB
+            }
+            
+            // Then by date (newest first within same status)
             const dateA = new Date(a.original_created_at || a.created_at || 0)
             const dateB = new Date(b.original_created_at || b.created_at || 0)
-            return dateB - dateA // Newest first
+            return dateB - dateA
         })
         
         currentTableDrafts.value = sortedDrafts
@@ -990,8 +1026,10 @@ const viewOrder = async (table, event) => {
             canEditOrder.value = false
         }
         
+        currentViewingTable.value = table
+        
         // Load the first (newest) order
-        loadOrderAtIndex(0, table.table_name)
+        loadOrderAtIndex(0)
         showDetailsModal.value = true
     } else {
         // Fallback if draft not found locally (maybe needs fetch)
@@ -1002,7 +1040,7 @@ const viewOrder = async (table, event) => {
 /**
  * Load order data at specified index
  */
-const loadOrderAtIndex = (idx, tableName) => {
+const loadOrderAtIndex = (idx) => {
     const draft = currentTableDrafts.value[idx]
     if (!draft) return
     
@@ -1014,17 +1052,30 @@ const loadOrderAtIndex = (idx, tableName) => {
         return sum + (qty * rate)
     }, 0)
     
+    const tableName = currentViewingTable.value?.table_name || ''
+    
+    // Determine if order is paid
+    const isPaidOrder = draft.is_paid || (draft.draft_id && !draft.draft_id.startsWith('DRAFT-'))
+    
+    // Determine if order is locked (cannot be edited)
+    // Orders are locked if: paid, OR status is 'requested' or 'sent_to_kitchen'
+    const orderStatus = draft.order_status || 'requested'
+    const isLockedOrder = isPaidOrder || orderStatus === 'requested' || orderStatus === 'sent_to_kitchen'
+    
     selectedTableOrder.value = {
         tableName: tableName,
+        notes: currentViewingTable.value?.notes || '',
         items: items,
         customer: typeof customer === 'object' ? (customer?.customer_name || customer?.name) : customer,
         total,
-        status: 'Unpaid',
+        status: isPaidOrder ? 'Paid' : 'Unpaid',
+        isPaid: isPaidOrder,
+        isLocked: isLockedOrder,
         orderCount: currentTableDrafts.value.length,
         // Edit tracking fields
         isEdited: draft.is_edited || false,
         editCount: draft.edit_count || 0,
-        orderStatus: draft.order_status || 'requested',
+        orderStatus: orderStatus,
         createdAt: draft.original_created_at || draft.created_at,
         lastEditedAt: draft.last_edited_at,
         draftId: draft.draft_id
@@ -1032,12 +1083,10 @@ const loadOrderAtIndex = (idx, tableName) => {
 }
 
 /**
- * Switch to a different order when user selects from dropdown
+ * Switch to a different order for the same table
  */
 const switchToOrder = (idx) => {
-    if (selectedTableOrder.value) {
-        loadOrderAtIndex(idx, selectedTableOrder.value.tableName)
-    }
+    loadOrderAtIndex(idx)
 }
 
 const closeDetailsModal = () => {
@@ -1048,19 +1097,33 @@ const closeDetailsModal = () => {
 }
 
 const submitOrderFromDetails = () => {
-    // Select the table to load it into cart
+    // Select the table to load only the selected order into cart
+    // Pass the specific draft ID so only this order is loaded, not all orders
     const table = tables.value.find(t => t.table_name === selectedTableOrder.value.tableName)
     if (table) {
-        emit('table-selected', table)
+        emit('table-selected', { 
+            table, 
+            draftId: selectedTableOrder.value.draftId 
+        })
     }
     closeDetailsModal()
 }
 
 const checkoutFromDetails = () => {
+    // Prevent double payment - check if order is already paid
+    if (selectedTableOrder.value?.isPaid) {
+        alert(__('This order has already been paid'))
+        return
+    }
+    
     // Select the table to load it into cart + trigger checkout
+    // Pass the specific draft ID so only this order is paid, not all orders
     const table = tables.value.find(t => t.table_name === selectedTableOrder.value.tableName)
     if (table) {
-        emit('checkout-table', table)
+        emit('checkout-table', { 
+            table, 
+            draftId: selectedTableOrder.value.draftId 
+        })
     }
     closeDetailsModal()
 }
@@ -1317,6 +1380,7 @@ const printToKitchen = () => {
     // Build kitchen ticket HTML directly (bypass item_group filter)
     const ticketHTML = buildKitchenTicketHTML({
         tableName,
+        tableNote: selectedTableOrder.value.notes || '',
         items: kitchenItems,
         isModification: isEdited
     })

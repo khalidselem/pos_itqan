@@ -236,6 +236,9 @@ export function useInvoice() {
 				cut_types: item.cut_types || [],
 				// Selected cut type
 				custom_cut_type: item.custom_cut_type || "",
+				// Tax flags and rates
+				has_item_tax_template: item.has_item_tax_template || false,
+				item_tax_rate: item.item_tax_rate || "{}",
 			}
 			invoiceItems.value.push(newItem)
 			// Recalculate the newly added item to apply taxes
@@ -487,33 +490,65 @@ export function useInvoice() {
 	let cachedTaxRate = 0
 	let taxRulesCacheKey = ""
 
-	function calculateTotalTaxRate() {
-		// Create cache key from tax rules
-		const currentKey = JSON.stringify(taxRules.value)
+	/**
+	 * Calculates the total tax rate for an item based on its configuration.
+	 *
+	 * Hierarchy:
+	 * 1. Explicit Overrides: If item has specific tax rates (from Item Tax Template), use those.
+	 * 2. Template Fallback: If item is marked to have a template but rates aren't fetched, use global POS Profile rate.
+	 * 3. Exempt: If item does NOT have a tax template, return 0% tax.
+	 *
+	 * @param {Object} item - The invoice item to calculate tax for
+	 * @returns {number} The total summed tax percentage
+	 */
+	function calculateTotalTaxRate(item = null) {
 
-		// Return cached value if tax rules haven't changed
-		if (currentKey === taxRulesCacheKey && cachedTaxRate !== 0) {
-			return cachedTaxRate
+		// 1. If it explicitly does NOT have a template, it MUST be 0 (Exempt)
+		// This handles false, null, undefined (if item exists)
+		if (item && !item.has_item_tax_template) {
+			return 0
 		}
 
-		// Calculate total tax rate
-		let totalRate = 0
+		// 2. Try to use item-level overrides from Item Tax Template
+		if (item && item.item_tax_rate) {
+			try {
+				const overrides =
+					typeof item.item_tax_rate === "string"
+						? JSON.parse(item.item_tax_rate)
+						: item.item_tax_rate
+
+				if (overrides && Object.keys(overrides).length > 0) {
+					return Object.values(overrides).reduce((sum, rate) => sum + (rate || 0), 0)
+				}
+				
+				// ⭐ NEW LOGIC: If it HAS a template but rates are empty, it means 0% tax ⭐
+				// This prevents fallback to global 15% for items with empty templates.
+				if (item.has_item_tax_template) {
+					return 0
+				}
+			} catch (e) {
+				// Fallback if parsing fails
+			}
+		}
+
+		// 3. Fallback to global POS Profile rate only for global calculations (when item is null)
+		// Items with no template OR empty template already returned 0 above.
+		if (item) {
+			return 0
+		}
+
+		let globalRate = 0
 		if (taxRules.value && taxRules.value.length > 0) {
 			for (const taxRule of taxRules.value) {
 				if (
 					taxRule.charge_type === "On Net Total" ||
 					taxRule.charge_type === "On Previous Row Total"
 				) {
-					totalRate += taxRule.rate || 0
+					globalRate += taxRule.rate || 0
 				}
 			}
 		}
-
-		// Cache the result
-		cachedTaxRate = totalRate
-		taxRulesCacheKey = currentKey
-
-		return totalRate
+		return globalRate
 	}
 
 	function rebuildIncrementalCache() {
@@ -582,7 +617,8 @@ export function useInvoice() {
 		item.discount_amount = discountAmount
 
 		// Calculate tax based on inclusive/exclusive mode
-		const totalTaxRate = calculateTotalTaxRate()
+		// Respect Item Tax Template overrides if present
+		const totalTaxRate = calculateTotalTaxRate(item)
 		let netAmount = 0
 		let taxAmount = 0
 
@@ -639,22 +675,39 @@ export function useInvoice() {
 	 * @returns {Array} Items formatted for ERPNext Sales Invoice
 	 */
 	function formatItemsForSubmission(items) {
-		return items.map((item) => ({
-			item_code: item.item_code,
-			item_name: item.item_name,
-			qty: item.quantity || item.qty || 1,
-			rate: computeBackendRate(item),
-			price_list_rate: item.price_list_rate || item.rate,
-			uom: item.uom,
-			warehouse: item.warehouse,
-			batch_no: item.batch_no,
-			serial_no: item.serial_no,
-			conversion_factor: item.conversion_factor || 1,
-			discount_percentage: item.discount_percentage || 0,
-			discount_amount: item.discount_amount || 0,
-			pricing_rules: stringifyPricingRules(item.pricing_rules),
-			custom_cut_type: item.custom_cut_type || "",
-		}))
+		return items.map((item) => {
+			// If item has no tax template, force all tax rates to 0 using item_tax_rate
+			// This tells the ERPNext backend to calculate 0 tax for this specific item
+			let itemTaxRate = "";
+			if (!item.has_item_tax_template && taxRules.value && taxRules.value.length > 0) {
+				const taxRateMap = {};
+				for (const rule of taxRules.value) {
+					if (rule.account_head) {
+						taxRateMap[rule.account_head] = 0;
+					}
+				}
+				itemTaxRate = JSON.stringify(taxRateMap);
+			}
+
+			return {
+				item_code: item.item_code,
+				item_name: item.item_name,
+				qty: item.quantity || item.qty || 1,
+				rate: computeBackendRate(item),
+				price_list_rate: item.price_list_rate || item.rate,
+				uom: item.uom,
+				warehouse: item.warehouse,
+				batch_no: item.batch_no,
+				serial_no: item.serial_no,
+				conversion_factor: item.conversion_factor || 1,
+				discount_percentage: item.discount_percentage || 0,
+				discount_amount: item.discount_amount || 0,
+				pricing_rules: stringifyPricingRules(item.pricing_rules),
+				item_tax_rate: itemTaxRate,
+				custom_cut_type: item.custom_cut_type || "",
+				custom_sales_person: item.custom_sales_person || "",
+			}
+		})
 	}
 
 	function addPayment(payment) {
@@ -742,6 +795,9 @@ export function useInvoice() {
 			coupon_code: couponCode.value,
 			custom_pos_table: currentTable.value?.name || currentTable.value,
 			custom_table_notes: currentTable.value?.notes || null,
+			custom_table_received_at: currentTable.value?.received_at || null,
+			custom_customer_count: currentTable.value?.capacity || 1,
+			custom_table_zone: currentTable.value?.zone || null,
 			is_pos: 1,
 			update_stock: 1,
 		}
@@ -798,6 +854,9 @@ export function useInvoice() {
 					coupon_code: couponCode.value,
 					custom_pos_table: currentTable.value?.name || currentTable.value,
 					custom_table_notes: currentTable.value?.notes || null,
+					custom_table_received_at: currentTable.value?.received_at || null,
+					custom_customer_count: currentTable.value?.capacity || 1,
+					custom_table_zone: currentTable.value?.zone || null,
 					is_pos: 1,
 					update_stock: 1, // Critical: Ensures stock is updated
 				}
@@ -1088,6 +1147,7 @@ export function useInvoice() {
 		clearCart,
 		setDefaultCustomer,
 		loadTaxRules,
+		calculateTotalTaxRate,
 		setTaxInclusive,
 		recalculateItem,
 		rebuildIncrementalCache,

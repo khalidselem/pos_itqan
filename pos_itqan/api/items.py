@@ -24,6 +24,7 @@ ITEM_RESULT_FIELDS = [
 	"brand",
 	"has_variants",
 	"custom_company",
+	"item_arabic",
 	"disabled",
 ]
 
@@ -310,6 +311,37 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 		order_by="idx"
 	)
 	res["cut_types"] = [row.cut_type for row in cut_types]
+	
+	# ITEM TAX TEMPLATE: Fetch rates if assigned
+	res["has_item_tax_template"] = False
+	res["item_tax_rate"] = "{}"
+	
+	item_meta = frappe.get_cached_value("Item", item_code, ["item_group"], as_dict=True) or {}
+	tax_template = frappe.db.get_value("Item Tax", {"parent": item_code, "parenttype": "Item"}, "item_tax_template")
+	
+	if not tax_template:
+		tax_template = item_meta.get("item_tax_template")
+		
+	if not tax_template and item_meta.get("item_group"):
+		tax_template = frappe.db.get_value(
+			"Item Tax", 
+			{"parent": item_meta["item_group"], "parenttype": "Item Group"}, 
+			"item_tax_template"
+		)
+
+	if tax_template:
+		rates = frappe.get_all(
+			"Item Tax Template Detail",
+			filters={"parent": tax_template},
+			fields=["tax_type", "tax_rate"]
+		)
+		if rates:
+			res["has_item_tax_template"] = True
+			tax_rate_map = {row["tax_type"]: row["tax_rate"] for row in rates}
+			res["item_tax_rate"] = json.dumps(tax_rate_map)
+		else:
+			# If template exists but is empty, it's effectively NO template for the POS logic
+			res["has_item_tax_template"] = False
 
 	return res
 
@@ -1017,7 +1049,7 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 			search_words = [word.strip() for word in effective_search_term.split() if word.strip()]
 
 			# Word-order independent: all words must appear somewhere in item fields
-			search_text = "CONCAT(COALESCE(i.name, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(i.description, ''))"
+			search_text = "CONCAT(COALESCE(i.name, ''), ' ', COALESCE(i.item_name, ''), ' ', COALESCE(i.item_arabic, ''), ' ', COALESCE(i.description, ''))"
 			word_conditions = " AND ".join([f"{search_text} LIKE %s"] * len(search_words))
 
 			# Also match if barcode contains the search term
@@ -1037,12 +1069,14 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 					WHEN ib.barcode LIKE %s THEN 1200
 					WHEN LOWER(i.item_name) = LOWER(%s) THEN 1000
 					WHEN LOWER(i.name) = LOWER(%s) THEN 900
+					WHEN i.item_arabic LIKE %s THEN 800
 					WHEN LOWER(i.item_name) LIKE LOWER(%s) THEN 500
 					WHEN LOWER(i.name) LIKE LOWER(%s) THEN 400
+					WHEN i.item_arabic LIKE %s THEN 350
 					ELSE 100
 				END)
 			"""
-			score_params = [effective_search_term, prefix_pattern, effective_search_term, effective_search_term, prefix_pattern, prefix_pattern]
+			score_params = [effective_search_term, prefix_pattern, effective_search_term, effective_search_term, f"%{effective_search_term}%", prefix_pattern, prefix_pattern, f"%{effective_search_term}%"]
 			order_by = f"{relevance} DESC, i.item_name ASC"
 		else:
 			# No search term - simple ordering
@@ -1297,6 +1331,90 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 
 			# Add Cut Types
 			item["cut_types"] = cut_types_map.get(item["item_code"], [])
+
+		# ===================================================================
+		# ITEM TAX TEMPLATE: Bulk fetch tax rates for each item
+		# ===================================================================
+		item_tax_rates = {}
+		if item_codes:
+			try:
+				# 1. Get the template names for each item
+				# Check child table first (standard)
+				tax_templates_child = frappe.db.sql(
+					"""
+					SELECT parent, item_tax_template
+					FROM `tabItem Tax`
+					WHERE parent IN %s 
+					AND parenttype = 'Item'
+					AND (item_tax_template IS NOT NULL AND item_tax_template != '')
+					""",
+					(tuple(item_codes),),
+					as_dict=True,
+				)
+				
+				item_to_template = {row["parent"]: row["item_tax_template"] for row in tax_templates_child}
+				
+				# 2. Check Item master to get their Item Groups
+				item_details = frappe.get_all(
+					"Item",
+					filters={"name": ["in", item_codes]},
+					fields=["name", "item_group"]
+				)
+				
+				item_to_group = {}
+				for row in item_details:
+					if row.get("item_group"):
+						item_to_group[row["name"]] = row["item_group"]
+							
+				# Check Item Group templates for items that still don't have one
+				if item_to_group:
+					groups = list(set(item_to_group.values()))
+					group_templates = frappe.get_all(
+						"Item Tax",
+						filters={"parent": ["in", groups], "parenttype": "Item Group"},
+						fields=["parent", "item_tax_template"]
+					)
+					group_to_template = {row["parent"]: row["item_tax_template"] for row in group_templates}
+					
+					for item_code, group_name in item_to_group.items():
+						if item_code not in item_to_template and group_name in group_to_template:
+							template_name = group_to_template[group_name]
+							item_to_template[item_code] = template_name
+				
+				template_names = {t for t in item_to_template.values() if t}
+
+				# 2. Fetch rates for all unique templates found
+				template_rates = {}
+				if template_names:
+					rates_data = frappe.db.sql(
+						"""
+						SELECT parent, tax_type, tax_rate
+						FROM `tabItem Tax Template Detail`
+						WHERE parent IN %s
+						""",
+						(tuple(template_names),),
+						as_dict=True,
+					)
+					for row in rates_data:
+						template_rates.setdefault(row["parent"], {})[row["tax_type"]] = row["tax_rate"]
+
+				# 3. Map rates back to items
+				for item_code, template_name in item_to_template.items():
+					if template_name in template_rates:
+						item_tax_rates[item_code] = json.dumps(template_rates[template_name])
+					else:
+						# If template has no rates, it's effectively NOT a template for our logic
+						if item_code in item_to_template:
+							item_to_template[item_code] = None
+
+			except Exception as e:
+				frappe.log_error(f"Error fetching item tax rates: {e}", "VAT Query Error")
+
+		# Set the flags and rates on each item
+		for item in items:
+			item_code = item["item_code"]
+			item["has_item_tax_template"] = item_code in item_to_template
+			item["item_tax_rate"] = item_tax_rates.get(item_code, "{}")
 
 		# Apply resolved barcode data (weighted/priced) to the first matching item
 		if resolved_barcode_data and items:

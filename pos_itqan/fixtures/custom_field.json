@@ -635,6 +635,54 @@
         "is_system_generated": 0
     },
     {
+        "dt": "Sales Invoice",
+        "fieldname": "custom_table_notes",
+        "fieldtype": "Small Text",
+        "label": "Table Notes",
+        "module": "POS ITQAN",
+        "name": "Sales Invoice-custom_table_notes",
+        "insert_after": "custom_pos_table",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Sales Invoice",
+        "fieldname": "custom_table_received_at",
+        "fieldtype": "Datetime",
+        "label": "Table Received At",
+        "module": "POS ITQAN",
+        "name": "Sales Invoice-custom_table_received_at",
+        "insert_after": "custom_table_notes",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Sales Invoice",
+        "fieldname": "custom_customer_count",
+        "fieldtype": "Int",
+        "label": "Customer Count",
+        "module": "POS ITQAN",
+        "name": "Sales Invoice-custom_customer_count",
+        "insert_after": "custom_table_received_at",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Sales Invoice",
+        "fieldname": "custom_table_zone",
+        "fieldtype": "Data",
+        "label": "Table Zone",
+        "module": "POS ITQAN",
+        "name": "Sales Invoice-custom_table_zone",
+        "insert_after": "custom_customer_count",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
         "dt": "POS Profile",
         "fieldname": "custom_enable_table_management",
         "fieldtype": "Check",
@@ -645,5 +693,59 @@
         "reqd": 0,
         "doctype": "Custom Field",
         "is_system_generated": 0
+    },
+    {
+        "dt": "Sales Invoice Item",
+        "fieldname": "custom_sales_person",
+        "fieldtype": "Link",
+        "label": "Sales Person",
+        "module": "POS ITQAN",
+        "name": "Sales Invoice Item-custom_sales_person",
+        "options": "Sales Person",
+        "insert_after": "custom_cut_type",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0,
+        "in_list_view": 0,
+        "print_hide": 0
+    },
+    {
+        "dt": "POS Profile",
+        "fieldname": "custom_default_customer_group",
+        "fieldtype": "Link",
+        "label": "Default Customer Group",
+        "module": "POS ITQAN",
+        "name": "POS Profile-custom_default_customer_group",
+        "options": "Customer Group",
+        "insert_after": "customer",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "POS Profile",
+        "fieldname": "custom_default_country",
+        "fieldtype": "Link",
+        "label": "Default Country (For Phone Code)",
+        "module": "POS ITQAN",
+        "name": "POS Profile-custom_default_country",
+        "options": "Country",
+        "insert_after": "customer",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0
+    },
+    {
+        "dt": "Item",
+        "fieldname": "item_arabic",
+        "fieldtype": "Data",
+        "label": "Item Arabic Name",
+        "module": "POS ITQAN",
+        "name": "Item-item_arabic",
+        "insert_after": "item_name",
+        "reqd": 0,
+        "doctype": "Custom Field",
+        "is_system_generated": 0,
+        "translatable": 1
     }
 ]

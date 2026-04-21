@@ -379,6 +379,9 @@
 							<h3 class="text-[10px] sm:text-xs font-semibold text-gray-900 truncate mb-0.5 leading-tight">
 								{{ item.item_name }}
 							</h3>
+							<div v-if="item.item_arabic" class="text-[9px] sm:text-[11px] text-gray-500 mb-0.5 truncate" dir="rtl">
+								{{ item.item_arabic }}
+							</div>
 							<p class="text-[9px] sm:text-[10px] text-gray-500 leading-tight">
 									<span class="font-semibold text-blue-600">{{ formatCurrency(item.rate || item.price_list_rate || 0) }}</span>
 									<span class="text-gray-400">/ {{ item.uom || item.stock_uom || __('Nos', null, 'UOM') }}</span>
@@ -504,6 +507,7 @@
 						<tr>
 							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[50px] sm:w-[60px]">{{ __('Image') }}</th>
 							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 max-w-[120px] sm:max-w-[180px] md:max-w-[200px]">{{ __('Name') }}</th>
+							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 max-w-[120px] sm:max-w-[180px]" dir="rtl">{{ __('Arabic') }}</th>
 							<th scope="col" class="hidden sm:table-cell px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 sm:max-w-[150px]">{{ __('Code') }}</th>
 							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">{{ __('Rate') }}</th>
 							<th scope="col" class="px-2 sm:px-3 py-2 sm:py-2.5 text-start text-[10px] sm:text-xs font-semibold text-gray-700 uppercase tracking-wider bg-gray-50 border-b-2 border-gray-200 sticky top-0 z-10 w-[70px] sm:w-[100px]">{{ __('Qty') }}</th>
@@ -546,6 +550,11 @@
 									{{ item.item_name }}
 								</div>
 							</td>
+							<td class="px-2 sm:px-3 py-2 max-w-[120px] sm:max-w-[180px]" dir="rtl">
+								<div class="text-xs sm:text-sm text-gray-700 truncate" :title="item.item_arabic">
+									{{ item.item_arabic || '' }}
+								</div>
+							</td>
 							<td class="hidden sm:table-cell px-2 sm:px-3 py-2 whitespace-nowrap sm:max-w-[150px]">
 								<div class="text-xs sm:text-sm text-gray-500 truncate" :title="item.item_code">{{ item.item_code }}</div>
 							</td>
@@ -584,7 +593,7 @@
 						</tr>
 						<!-- Loading More Indicator Row -->
 						<tr v-if="loadingMore">
-							<td colspan="6" class="px-2 sm:px-3 py-4 text-center bg-white">
+							<td colspan="7" class="px-2 sm:px-3 py-4 text-center bg-white">
 								<div class="flex justify-center items-center">
 									<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
 									<p class="ms-2 text-xs text-gray-500">{{ __('Loading more items...') }}</p>
@@ -594,14 +603,14 @@
 
 						<!-- End of Results Indicator Row - Only show on last page or when all items fit in one page -->
 						<tr v-else-if="!hasMore && filteredItems.length > 0 && !searchTerm && (currentPage === totalPages || totalPages === 1)">
-							<td colspan="6" class="px-2 sm:px-3 py-3 text-center bg-white">
+							<td colspan="7" class="px-2 sm:px-3 py-3 text-center bg-white">
 								<p class="text-xs text-gray-400">{{ __('All items loaded') }}</p>
 							</td>
 						</tr>
 
 						<!-- Search Results Count Row -->
 						<tr v-else-if="searchTerm && filteredItems.length > 0">
-							<td colspan="6" class="px-2 sm:px-3 py-3 text-center bg-white">
+							<td colspan="7" class="px-2 sm:px-3 py-3 text-center bg-white">
 								<p class="text-xs text-gray-500">{{ __('{0} items found', [filteredItems.length]) }}</p>
 							</td>
 						</tr>

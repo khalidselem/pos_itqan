@@ -46,7 +46,17 @@ export function filterKitchenItems(items) {
  * @param {boolean} options.isModification - Whether this is a modification of existing order
  * @returns {string} HTML string for printing
  */
-export function buildKitchenTicketHTML({ tableName, items, time = new Date(), isModification = false }) {
+/**
+ * Build kitchen ticket HTML
+ * @param {Object} options
+ * @param {string} options.tableName - Table name/number
+ * @param {string} options.tableNote - Note for the table
+ * @param {Array} options.items - Kitchen items to print
+ * @param {Date} options.time - Order time
+ * @param {boolean} options.isModification - Whether this is a modification of existing order
+ * @returns {string} HTML string for printing
+ */
+export function buildKitchenTicketHTML({ tableName, tableNote, items, time = new Date(), isModification = false }) {
     const timeStr = time.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
@@ -102,6 +112,15 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date(), is
             font-weight: bold;
             margin: 5px 0;
         }
+        .table-note {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 5px 0;
+            border: 1px solid #000;
+            padding: 4px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+        }
         .items {
             width: 100%;
             border-collapse: collapse;
@@ -135,6 +154,7 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date(), is
     <div class="header">
         <h1>🍳 Kitchen Order</h1>
         <div class="table-name">Table: ${tableName}</div>
+        ${tableNote ? `<div class="table-note">NOTE: ${tableNote}</div>` : ''}
     </div>
     
     <table class="items">
@@ -153,11 +173,12 @@ export function buildKitchenTicketHTML({ tableName, items, time = new Date(), is
  * Print kitchen order using an invisible iframe
  * @param {Object} options
  * @param {string} options.tableName - Table name
+ * @param {string} options.tableNote - Table note
  * @param {Array} options.items - All cart items (will be filtered for kitchen items)
  * @param {boolean} options.isModification - Whether this is a modification of existing order
  * @returns {boolean} True if print was triggered, false if no kitchen items
  */
-export function printKitchenOrder({ tableName, items, isModification = false }) {
+export function printKitchenOrder({ tableName, tableNote, items, isModification = false }) {
     // Filter for kitchen items only
     const kitchenItems = filterKitchenItems(items);
 
@@ -169,6 +190,7 @@ export function printKitchenOrder({ tableName, items, isModification = false }) 
     // Build the ticket HTML
     const ticketHTML = buildKitchenTicketHTML({
         tableName: tableName || 'N/A',
+        tableNote: tableNote,
         items: kitchenItems,
         isModification: isModification
     });

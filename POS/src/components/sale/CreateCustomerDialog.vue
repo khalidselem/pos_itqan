@@ -146,6 +146,14 @@
 					<Input v-model="customerData.email_id" type="email" :placeholder="__('Enter email address')" />
 				</div>
 
+				<!-- Tax ID -->
+				<div>
+					<label class="block text-start text-sm font-medium text-gray-700 mb-2">
+						{{ __("Tax ID") }}
+					</label>
+					<Input v-model="customerData.tax_id" type="text" :placeholder="__('Enter tax ID')" />
+				</div>
+
 				<!-- Customer Group -->
 				<div>
 					<label class="block text-start text-sm font-medium text-gray-700 mb-2">
@@ -273,6 +281,8 @@ const countrySearchQuery = ref("")
 const dropdownRef = ref(null)
 const countrySearchRef = ref(null)
 
+const defaultCustomerGroup = ref("")
+
 const customerGroups = ref(["Commercial", "Individual", "Non Profit", "Government"])
 const territories = ref(["All Territories"])
 
@@ -280,7 +290,8 @@ const customerData = ref({
 	customer_name: "",
 	mobile_no: "",
 	email_id: "",
-	customer_group: "تجاري",
+	tax_id: "",
+	customer_group: "",
 	territory: "All Territories",
 	// Custom Address Fields
 	custom_area: "",
@@ -397,6 +408,7 @@ const createCustomerResource = createResource({
 			territory: customerData.value.territory || __("All Territories"),
 			mobile_no: customerData.value.mobile_no || "",
 			email_id: customerData.value.email_id || "",
+			tax_id: customerData.value.tax_id || "",
 			// Custom Fields
 			custom_area: customerData.value.custom_area || "",
 			custom_house: customerData.value.custom_house || "",
@@ -429,6 +441,7 @@ const updateCustomerResource = createResource({
 			territory: customerData.value.territory || __("All Territories"),
 			mobile_no: customerData.value.mobile_no || "",
 			email_id: customerData.value.email_id || "",
+			tax_id: customerData.value.tax_id || "",
 			// Custom Fields
 			custom_area: customerData.value.custom_area || "",
 			custom_house: customerData.value.custom_house || "",
@@ -473,10 +486,21 @@ const posProfileResource = createResource({
 	makeParams: () => ({
 		doctype: "POS Profile",
 		filters: { name: props.posProfile },
-		fieldname: ["country"],
+		fieldname: ["country", "custom_default_customer_group", "custom_default_country"],
 	}),
 	auto: false,
-	onSuccess: (data) => setCountryFromName(data?.country || "Egypt"),
+	onSuccess: (data) => {
+		setCountryFromName(data?.custom_default_country || data?.country || "Egypt")
+		
+		if (data?.custom_default_customer_group) {
+			defaultCustomerGroup.value = data.custom_default_customer_group
+			
+			// Only apply default if we are not editing an existing customer
+			if (!isEditMode.value && !customerData.value.customer_group) {
+				customerData.value.customer_group = defaultCustomerGroup.value
+			}
+		}
+	},
 	onError: (err) => {
 		log.error("Error loading POS Profile", err)
 		selectedCountryCode.value = "+20"
@@ -488,8 +512,8 @@ const posProfileResource = createResource({
 // =============================================================================
 
 const loadDialogData = async () => {
-	// Lazy load countries (non-blocking)
-	countriesStore.loadCountries()
+	// Ensure countries are loaded so countryNameToISDMap is populated
+	await countriesStore.loadCountries()
 
 	// Load form options
 	await territoriesResource.reload()
@@ -532,7 +556,8 @@ const resetForm = () => {
 		customer_name: "",
 		mobile_no: "",
 		email_id: "",
-		customer_group: "تجاري",
+		tax_id: "",
+		customer_group: defaultCustomerGroup.value || "",
 		territory: "All Territories",
 		custom_area: "",
 		custom_house: "",
@@ -562,6 +587,7 @@ watch(
 		if (customer?.name) {
 			customerData.value.customer_name = customer.customer_name || ""
 			customerData.value.email_id = customer.email_id || ""
+			customerData.value.tax_id = customer.tax_id || ""
 			customerData.value.customer_group = customer.customer_group || "Individual"
 			customerData.value.territory = customer.territory || "All Territories"
 			

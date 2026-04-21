@@ -65,6 +65,9 @@
 													<h3 class="text-base font-semibold text-gray-900 truncate">
 														{{ localItem.item_name }}
 													</h3>
+													<div v-if="localItem.item_arabic" class="text-sm text-gray-600 truncate mb-1" dir="rtl">
+														{{ localItem.item_arabic }}
+													</div>
 													<p class="text-sm text-gray-500 truncate">
 														{{ formatCurrency(localItem.price_list_rate || localItem.rate) }} / {{ localItem.stock_uom || __('Nos', null, 'UOM') }}
 													</p>
@@ -170,6 +173,25 @@
 													<div>
 														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">{{ __('Warehouse') }}</label>
 														<SelectInput v-model="localWarehouse" :options="warehouseOptions" @change="handleWarehouseChange" />
+													</div>
+
+													<!-- Sales Person Selector (only when enabled) -->
+													<div v-if="settingsStore.enableItemSalesPerson">
+														<label class="block text-sm font-medium text-gray-700 mb-2 text-start">
+															{{ __('Sales Person') }}
+															<span class="text-red-500">*</span>
+														</label>
+														<SelectInput
+															v-model="localSalesPerson"
+															:options="salesPersonOptions"
+															:class="{ 'ring-2 ring-red-300 rounded-lg': !localSalesPerson }"
+														/>
+														<div v-if="!localSalesPerson" class="mt-1 text-xs text-red-600 flex items-center gap-1 text-start">
+															<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+																<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+															</svg>
+															{{ __('Sales person is required') }}
+														</div>
 													</div>
 
 													<!-- Cut Type Selector -->
@@ -285,7 +307,7 @@
 									<Button
 										variant="solid"
 										@click="updateItem"
-										:disabled="!hasStock || isCheckingStock"
+										:disabled="!hasStock || isCheckingStock || isSalesPersonMissing"
 									>
 										<span v-if="isCheckingStock">{{ __('Checking Stock...') }}</span>
 										<span v-else-if="!hasStock">{{ __('No Stock Available') }}</span>
@@ -307,7 +329,7 @@ import { usePOSSettingsStore } from "@/stores/posSettings"
 import { useSerialNumberStore } from "@/stores/serialNumber"
 import { getItemStock } from "@/utils/stockValidator"
 import { formatCurrency as formatCurrencyUtil, getCurrencySymbol, round2 } from "@/utils/currency"
-import { Button, FeatherIcon } from "frappe-ui"
+import { Button, FeatherIcon, createResource } from "frappe-ui"
 import { computed, ref, watch } from "vue"
 import SelectInput from "@/components/common/SelectInput.vue"
 
@@ -338,6 +360,7 @@ const localRate = ref(0)
 const localWarehouse = ref("")
 const localCutType = ref("")
 const localNotes = ref("")
+const localSalesPerson = ref("")
 const discountType = ref("percentage")
 const discountValue = ref(0)
 const calculatedSubtotal = ref(0)
@@ -398,6 +421,35 @@ const cutTypeOptions = computed(() => {
 	}))
 })
 
+// Sales Person resource + options
+const salesPersonsList = ref([])
+const salesPersonsResource = createResource({
+	url: "pos_itqan.api.pos_profile.get_sales_persons",
+	auto: false,
+	onSuccess(data) {
+		salesPersonsList.value = data?.message || data || []
+	},
+	onError() {
+		salesPersonsList.value = []
+	},
+})
+
+const salesPersonOptions = computed(() => {
+	const opts = [{ value: "", label: __('Select Sales Person...') }]
+	for (const person of salesPersonsList.value) {
+		opts.push({
+			value: person.name,
+			label: person.sales_person_name || person.name,
+		})
+	}
+	return opts
+})
+
+// Validation: is sales person missing when required?
+const isSalesPersonMissing = computed(() => {
+	return settingsStore.enableItemSalesPerson && !localSalesPerson.value
+})
+
 // Initialize local state when item changes
 watch(
 	() => props.item,
@@ -411,6 +463,12 @@ watch(
 				newItem.warehouse || props.warehouses[0]?.name || ""
 			localCutType.value = newItem.custom_cut_type || ""
 			localNotes.value = newItem.notes || newItem.custom_notes || ""
+			localSalesPerson.value = newItem.custom_sales_person || ""
+
+			// Load sales persons list when feature is enabled
+			if (settingsStore.enableItemSalesPerson && salesPersonsList.value.length === 0) {
+				salesPersonsResource.fetch()
+			}
 
 			// Initialize serial numbers
 			if (newItem.has_serial_no && newItem.serial_no) {
@@ -625,6 +683,7 @@ function updateItem() {
 		rate: localRate.value,
 		warehouse: localWarehouse.value,
 		custom_cut_type: localCutType.value,
+		custom_sales_person: localSalesPerson.value,
 		notes: localNotes.value,
 		discount_percentage:
 			discountType.value === "percentage" ? discountValue.value : 0,

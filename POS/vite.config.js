@@ -143,7 +143,7 @@ export default defineConfig({
 					},
 					{
 						urlPattern: /\/assets\/pos_itqan\/pos\/.*/i,
-						handler: "CacheFirst",
+						handler: "StaleWhileRevalidate",
 						options: {
 							cacheName: "pos-assets-cache",
 							expiration: {

@@ -99,6 +99,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		submitInvoice: baseSubmitInvoice,
 		clearCart: clearInvoiceCart,
 		loadTaxRules,
+		calculateTotalTaxRate,
 		setTaxInclusive,
 		setDefaultCustomer,
 		applyDiscount,
@@ -1371,6 +1372,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 			}
 			if (updates.serial_no !== undefined) cartItem.serial_no = updates.serial_no
 			if (updates.custom_cut_type !== undefined) cartItem.custom_cut_type = updates.custom_cut_type
+			if (updates.custom_sales_person !== undefined) cartItem.custom_sales_person = updates.custom_sales_person
 
 			recalculateItem(cartItem)
 			rebuildIncrementalCache()
@@ -1740,6 +1742,7 @@ export const usePOSCartStore = defineStore("posCart", () => {
 		updateItemDetails,
 		getItemDetailsResource,
 		recalculateItem,
+		calculateTotalTaxRate,
 		rebuildIncrementalCache,
 		applyOffersResource,
 		buildOfferEvaluationPayload,

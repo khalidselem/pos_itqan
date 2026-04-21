@@ -570,12 +570,27 @@ def update_invoice(data):
             # Frontend sends as custom_pos_table, also accept custom_table or table_name
             table_name = data.get("custom_pos_table") or data.get("custom_table") or data.get("table_name")
             if table_name:
-                invoice_doc.custom_table = table_name
+                invoice_doc.custom_pos_table = table_name
             
             # Set table notes if provided
             table_notes = data.get("custom_table_notes") or data.get("table_notes")
-            if table_notes and hasattr(invoice_doc, 'custom_table_notes'):
+            if table_notes:
                 invoice_doc.custom_table_notes = table_notes
+
+            # Set table received time if provided
+            table_received_at = data.get("custom_table_received_at") or data.get("received_at")
+            if table_received_at:
+                invoice_doc.custom_table_received_at = table_received_at
+
+            # Set customer count if provided
+            customer_count = data.get("custom_customer_count") or data.get("customer_count")
+            if customer_count:
+                invoice_doc.custom_customer_count = customer_count
+
+            # Set table zone if provided
+            table_zone = data.get("custom_table_zone") or data.get("table_zone") or data.get("zone")
+            if table_zone:
+                invoice_doc.custom_table_zone = table_zone
 
         # ========================================================================
         # ROUNDING CONFIGURATION
@@ -666,6 +681,29 @@ def update_invoice(data):
         frappe.flags.ignore_account_permission = True
         invoice_doc.docstatus = 0
         invoice_doc.save()
+
+        # LINK TO TABLE: If this invoice is for a table, ensure it's linked
+        if invoice_doc.custom_pos_table:
+            try:
+                from pos_itqan.api.tables import add_order_to_table, update_table_status
+                
+                # Add order to table (this sets status to Occupied)
+                add_order_to_table(
+                    table=invoice_doc.custom_pos_table, 
+                    draft_id=invoice_doc.name, 
+                    customer=invoice_doc.customer
+                )
+                
+                # Update table details if provided
+                if invoice_doc.custom_table_notes or invoice_doc.custom_table_received_at:
+                    update_table_status(
+                        table=invoice_doc.custom_pos_table,
+                        status="Occupied", # Ensure it stays occupied
+                        notes=invoice_doc.custom_table_notes,
+                        received_at=invoice_doc.custom_table_received_at
+                    )
+            except Exception as e:
+                frappe.log_error(f"Failed to link order {invoice_doc.name} to table {invoice_doc.custom_pos_table}: {e}", "POS Table Link")
 
         return invoice_doc.as_dict()
     except Exception as e:
@@ -1322,18 +1360,46 @@ def submit_invoice(invoice=None, data=None):
                         payment.account = account_info.get("account")
 
         # Handle sales team (multiple sales persons)
-        sales_team_data = invoice.get("sales_team") or data.get("sales_team")
-        if sales_team_data and isinstance(sales_team_data, list):
-            # Clear existing sales team entries
+        # Priority: item-level sales persons > invoice-level sales team
+        item_sales_persons = {}
+        has_item_sales_persons = False
+
+        # Check if any items have custom_sales_person set
+        for item in invoice_doc.get("items", []):
+            sp = item.get("custom_sales_person")
+            if sp:
+                has_item_sales_persons = True
+                item_amount = flt(item.get("amount") or (flt(item.get("qty", 1)) * flt(item.get("rate", 0))))
+                if sp in item_sales_persons:
+                    item_sales_persons[sp] += item_amount
+                else:
+                    item_sales_persons[sp] = item_amount
+
+        if has_item_sales_persons and item_sales_persons:
+            # Build sales_team from item-level sales persons
+            total_amount = sum(item_sales_persons.values())
             invoice_doc.sales_team = []
 
-            # Add new sales team entries
-            for member in sales_team_data:
-                if member and isinstance(member, dict):
-                    invoice_doc.append("sales_team", {
-                        "sales_person": member.get("sales_person"),
-                        "allocated_percentage": member.get("allocated_percentage", 0),
-                    })
+            for sp_name, sp_amount in item_sales_persons.items():
+                allocated_pct = (sp_amount / total_amount * 100) if total_amount > 0 else 0
+                invoice_doc.append("sales_team", {
+                    "sales_person": sp_name,
+                    "allocated_percentage": allocated_pct,
+                })
+        else:
+            # Fallback to invoice-level sales team
+            sales_team_data = invoice.get("sales_team") or data.get("sales_team")
+            if sales_team_data and isinstance(sales_team_data, list):
+                # Clear existing sales team entries
+                invoice_doc.sales_team = []
+
+                # Add new sales team entries
+                for member in sales_team_data:
+                    if member and isinstance(member, dict):
+                        invoice_doc.append("sales_team", {
+                            "sales_person": member.get("sales_person"),
+                            "allocated_percentage": member.get("allocated_percentage", 0),
+                        })
 
         # Handle POS Coupon if coupon_code is provided
         coupon_code = invoice.get("coupon_code") or data.get("coupon_code")
@@ -1379,6 +1445,19 @@ def submit_invoice(invoice=None, data=None):
         # Complete the offline sync record
         if sync_record_name:
             _complete_offline_sync(sync_record_name, invoice_doc.name)
+            
+        # CLEAR TABLE ORDER: If this invoice was linked to a POS Table, remove the order
+        # This clears the table or decrements the order count
+        if invoice_doc.custom_pos_table:
+            try:
+                from pos_itqan.api.tables import remove_order_from_table
+                # Pass the invoice name as draft_id because removing it will clear it from the list
+                # Note: remove_order_from_table expects the ID that was in the list.
+                # If the order was a draft, it had a name like "ACC-SINV-2025-00001".
+                # When submitted, the name stays the same.
+                remove_order_from_table(invoice_doc.custom_pos_table, invoice_doc.name)
+            except Exception as e:
+                frappe.log_error(f"Failed to clear table {invoice_doc.custom_pos_table}: {e}", "POS Table Clear")
 
         # Handle credit redemption after successful submission
         customer_credit_dict = data.get("customer_credit_dict") or invoice.get("customer_credit_dict")

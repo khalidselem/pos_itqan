@@ -9,6 +9,7 @@
         "zone",
         "capacity",
         "status",
+        "received_at",
         "current_order",
         "orders",
         "current_customer",
@@ -43,7 +44,14 @@
             "fieldtype": "Select",
             "in_list_view": 1,
             "label": "Status",
-            "options": "Available\nOccupied\nReserved\nDisabled"
+            "options": "Available\nOccupied\nReserved\nClosed\nDisabled"
+        },
+        {
+            "fieldname": "received_at",
+            "fieldtype": "Datetime",
+            "label": "Received At",
+            "read_only": 1,
+            "description": "When the table became occupied or reserved"
         },
         {
             "fieldname": "current_order",
@@ -72,7 +80,7 @@
     ],
     "index_web_pages_for_search": 1,
     "links": [],
-    "modified": "2026-01-29 02:45:00",
+    "modified": "2026-01-31 20:25:00",
     "modified_by": "Administrator",
     "module": "POS ITQAN",
     "name": "POS Table",

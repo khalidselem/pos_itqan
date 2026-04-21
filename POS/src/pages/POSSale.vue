@@ -2561,21 +2561,37 @@ function handleManagementMenuClick(menuItem) {
 	}
 }
 
-async function handleCheckoutTable(table) {
+async function handleCheckoutTable(payload) {
     uiStore.showTablesDialog = false;
     
-    // Load all drafts for this table and merge them into cart
+    // Handle both old format (just table) and new format ({ table, draftId })
+    const table = payload.table || payload;
+    const specificDraftId = payload.draftId || null;
+    
+    // Load all drafts for this table
     await draftsStore.loadDrafts();
-    const tableDrafts = draftsStore.getDraftsForTable(table.name);
+    let tableDrafts = draftsStore.getDraftsForTable(table.name);
+    
+    // If a specific draft ID was provided, filter to just that draft
+    if (specificDraftId) {
+        tableDrafts = tableDrafts.filter(d => d.draft_id === specificDraftId);
+    }
     
     if (tableDrafts.length === 0) {
         showWarning(__("No orders found for this table"));
         return;
     }
     
-    // Clear current cart and merge all table drafts
+    // Clear current cart and merge selected drafts
     cartStore.clearCart();
-    cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
+    cartStore.currentTable = { 
+        name: table.name, 
+        table_name: table.table_name, 
+        notes: table.notes,
+        received_at: table.received_at,
+        capacity: table.capacity,
+        zone: table.zone
+    };
     
     // Track linked draft IDs for cleanup after payment
     const linkedDraftIds = [];
@@ -2606,7 +2622,11 @@ async function handleCheckoutTable(table) {
     }
 }
 
-async function handleTableSelected(table) {
+async function handleTableSelected(payload) {
+    // Handle both old format (just table) and new format ({ table, draftId })
+    const table = payload.table || payload;
+    const specificDraftId = payload.draftId || null;
+    
     const isSameTable = cartStore.currentTable?.name === table.name;
     uiStore.showTablesDialog = false;
 
@@ -2614,14 +2634,19 @@ async function handleTableSelected(table) {
         // If it's the SAME table and we ALREADY have items in cart, we don't want to reload 
         // the draft from the server because that would overwrite any unsaved changes the user
         // just made to the cart. 
-        if (isSameTable && !cartStore.isEmpty) {
+        if (isSameTable && !cartStore.isEmpty && !specificDraftId) {
             showSuccess(__(`Continued with Table ${table.table_name}`));
             return;
         }
 
         // Load all drafts for this table
         await draftsStore.loadDrafts();
-        const tableDrafts = draftsStore.getDraftsForTable(table.name);
+        let tableDrafts = draftsStore.getDraftsForTable(table.name);
+        
+        // If a specific draft ID was provided, filter to just that draft
+        if (specificDraftId) {
+            tableDrafts = tableDrafts.filter(d => d.draft_id === specificDraftId);
+        }
 
         // If user already has items in cart that don't belong to this table
         if (!cartStore.isEmpty && !isSameTable) {
@@ -2643,9 +2668,9 @@ async function handleTableSelected(table) {
         }
 
         if (tableDrafts.length > 0) {
-            // Ask user: Load existing order or create new order?
+            // If specific draft was provided, load it directly without asking
             let loadExisting = true;
-            if (tableDrafts.length > 0 && cartStore.isEmpty) {
+            if (!specificDraftId && tableDrafts.length > 0 && cartStore.isEmpty) {
                 loadExisting = window.confirm(
                     __("This table has {0} existing order(s). Click OK to open them, or Cancel to start a new order.", [tableDrafts.length])
                 );
@@ -2655,10 +2680,19 @@ async function handleTableSelected(table) {
                 // Buffer current items if merging
                 const currentItems = !cartStore.isEmpty && !isSameTable ? [...cartStore.invoiceItems] : [];
                 
-                // Load the last/most recent draft (drafts are ordered by creation)
-                const primaryDraft = tableDrafts[tableDrafts.length - 1];
+                // Load the specified draft or the last/most recent one
+                const primaryDraft = specificDraftId 
+                    ? tableDrafts[0]  // Already filtered to specific draft
+                    : tableDrafts[tableDrafts.length - 1];
                 await handleLoadDraft(primaryDraft);
-                cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
+                cartStore.currentTable = { 
+                    name: table.name, 
+                    table_name: table.table_name, 
+                    notes: table.notes,
+                    received_at: table.received_at,
+                    capacity: table.capacity,
+                    zone: table.zone
+                };
                 
                 // Re-add buffered items
                 if (currentItems.length > 0) {
@@ -2670,7 +2704,14 @@ async function handleTableSelected(table) {
             } else {
                 // Start new order on same table, using existing customer
                 cartStore.clearCart();
-                cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
+                cartStore.currentTable = { 
+                    name: table.name, 
+                    table_name: table.table_name, 
+                    notes: table.notes,
+                    received_at: table.received_at,
+                    capacity: table.capacity,
+                    zone: table.zone
+                };
                 
                 // Use the table's existing customer
                 if (table.current_customer) {
@@ -2686,7 +2727,14 @@ async function handleTableSelected(table) {
         } else {
             // No drafts found but table is occupied (maybe direct invoice?)
             cartStore.clearCart();
-            cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
+            cartStore.currentTable = { 
+                name: table.name, 
+                table_name: table.table_name, 
+                notes: table.notes,
+                received_at: table.received_at,
+                capacity: table.capacity,
+                zone: table.zone
+            };
             
             // Use existing customer from table if available
             if (table.current_customer) {
@@ -2698,7 +2746,14 @@ async function handleTableSelected(table) {
     } else {
         // Table is Available or Reserved (but we can override reserve)
         // If we have items in cart, we just assign them to this table
-        cartStore.currentTable = { name: table.name, table_name: table.table_name, notes: table.notes };
+        cartStore.currentTable = { 
+            name: table.name, 
+            table_name: table.table_name, 
+            notes: table.notes,
+            received_at: table.received_at,
+            capacity: table.capacity,
+            zone: table.zone
+        };
         
         // If cart was empty, maybe prompt for customer?
         if (cartStore.isEmpty && !cartStore.customer) {

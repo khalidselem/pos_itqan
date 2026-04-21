@@ -29,6 +29,7 @@
         "allow_partial_payment",
         "use_exact_amount",
         "enable_sales_persons",
+        "enable_item_sales_person",
         "section_break_display",
         "default_card_view",
         "display_item_code",
@@ -253,6 +254,13 @@
             "fieldtype": "Select",
             "label": "Sales Persons Selection",
             "options": "Disabled\nSingle\nMultiple"
+        },
+        {
+            "default": "0",
+            "description": "When enabled, each item in the cart requires a sales person to be assigned. The sales team on the invoice is built from item-level assignments.",
+            "fieldname": "enable_item_sales_person",
+            "fieldtype": "Check",
+            "label": "Enable Item-Level Sales Person"
         },
         {
             "collapsible": 1,

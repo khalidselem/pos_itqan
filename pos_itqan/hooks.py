@@ -48,7 +48,9 @@ _asset_version = get_build_version()
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+	"Sales Invoice": "public/js/sales_invoice.js"
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -112,7 +114,10 @@ fixtures = [
 					"Customer-custom_jadd",
 					"Customer-custom_house",
 					"Customer-custom_floor",
-					"Customer-custom_apartment"
+					"Customer-custom_apartment",
+					"Sales Invoice Item-custom_sales_person",
+					"POS Profile-custom_default_customer_group",
+					"POS Profile-custom_default_country"
 				]
 			]
 		]
@@ -217,6 +222,7 @@ doc_events = {
 		"after_insert": "pos_itqan.api.customers.auto_assign_loyalty_program"
 	},
 	"Sales Invoice": {
+		"before_validate": "pos_itqan.api.sales_invoice_hooks.before_validate",
 		"validate": [
 			"pos_itqan.api.sales_invoice_hooks.validate",
 			"pos_itqan.api.wallet.validate_wallet_payment"
