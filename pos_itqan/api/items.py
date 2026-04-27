@@ -312,22 +312,54 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 	)
 	res["cut_types"] = [row.cut_type for row in cut_types]
 	
-	# ITEM TAX TEMPLATE: Fetch rates if assigned
+	# ITEM TAX TEMPLATE: Fetch rates if assigned (filtered by company)
 	res["has_item_tax_template"] = False
 	res["item_tax_rate"] = "{}"
 	
 	item_meta = frappe.get_cached_value("Item", item_code, ["item_group"], as_dict=True) or {}
-	tax_template = frappe.db.get_value("Item Tax", {"parent": item_code, "parenttype": "Item"}, "item_tax_template")
+	company = item.get("company") or ""
+	
+	# Look up template filtered by company
+	tax_template = None
+	if company:
+		tax_template = frappe.db.sql(
+			"""SELECT it.item_tax_template
+			FROM `tabItem Tax` it
+			JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+			WHERE it.parent = %s AND it.parenttype = 'Item'
+			AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+			AND itt.company = %s
+			LIMIT 1""",
+			(item_code, company),
+		)
+		tax_template = tax_template[0][0] if tax_template else None
+	else:
+		tax_template = frappe.db.get_value(
+			"Item Tax", {"parent": item_code, "parenttype": "Item"}, "item_tax_template"
+		)
 	
 	if not tax_template:
 		tax_template = item_meta.get("item_tax_template")
 		
 	if not tax_template and item_meta.get("item_group"):
-		tax_template = frappe.db.get_value(
-			"Item Tax", 
-			{"parent": item_meta["item_group"], "parenttype": "Item Group"}, 
-			"item_tax_template"
-		)
+		if company:
+			group_result = frappe.db.sql(
+				"""SELECT it.item_tax_template
+				FROM `tabItem Tax` it
+				JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+				WHERE it.parent = %s AND it.parenttype = 'Item Group'
+				AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+				AND itt.company = %s
+				LIMIT 1""",
+				(item_meta["item_group"], company),
+			)
+			tax_template = group_result[0][0] if group_result else None
+		else:
+			tax_template = frappe.db.get_value(
+				"Item Tax", 
+				{"parent": item_meta["item_group"], "parenttype": "Item Group"}, 
+				"item_tax_template"
+			)
 
 	if tax_template:
 		rates = frappe.get_all(
@@ -1337,21 +1369,36 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 		# ITEM TAX TEMPLATE: Bulk fetch tax rates for each item
 		# ===================================================================
 		item_tax_rates = {}
+		pos_company = pos_profile_doc.company if pos_profile_doc else ""
 		if item_codes:
 			try:
-				# 1. Get the template names for each item
-				# Check child table first (standard)
-				tax_templates_child = frappe.db.sql(
-					"""
-					SELECT parent, item_tax_template
-					FROM `tabItem Tax`
-					WHERE parent IN %s 
-					AND parenttype = 'Item'
-					AND (item_tax_template IS NOT NULL AND item_tax_template != '')
-					""",
-					(tuple(item_codes),),
-					as_dict=True,
-				)
+				# 1. Get the template names for each item (filtered by company)
+				if pos_company:
+					tax_templates_child = frappe.db.sql(
+						"""
+						SELECT it.parent, it.item_tax_template
+						FROM `tabItem Tax` it
+						JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+						WHERE it.parent IN %s 
+						AND it.parenttype = 'Item'
+						AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+						AND itt.company = %s
+						""",
+						(tuple(item_codes), pos_company),
+						as_dict=True,
+					)
+				else:
+					tax_templates_child = frappe.db.sql(
+						"""
+						SELECT parent, item_tax_template
+						FROM `tabItem Tax`
+						WHERE parent IN %s 
+						AND parenttype = 'Item'
+						AND (item_tax_template IS NOT NULL AND item_tax_template != '')
+						""",
+						(tuple(item_codes),),
+						as_dict=True,
+					)
 				
 				item_to_template = {row["parent"]: row["item_tax_template"] for row in tax_templates_child}
 				
@@ -1366,15 +1413,29 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 				for row in item_details:
 					if row.get("item_group"):
 						item_to_group[row["name"]] = row["item_group"]
-							
+						
 				# Check Item Group templates for items that still don't have one
 				if item_to_group:
 					groups = list(set(item_to_group.values()))
-					group_templates = frappe.get_all(
-						"Item Tax",
-						filters={"parent": ["in", groups], "parenttype": "Item Group"},
-						fields=["parent", "item_tax_template"]
-					)
+					if pos_company:
+						group_templates = frappe.db.sql(
+							"""
+							SELECT it.parent, it.item_tax_template
+							FROM `tabItem Tax` it
+							JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+							WHERE it.parent IN %s AND it.parenttype = 'Item Group'
+							AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+							AND itt.company = %s
+							""",
+							(tuple(groups), pos_company),
+							as_dict=True,
+						)
+					else:
+						group_templates = frappe.get_all(
+							"Item Tax",
+							filters={"parent": ["in", groups], "parenttype": "Item Group"},
+							fields=["parent", "item_tax_template"]
+						)
 					group_to_template = {row["parent"]: row["item_tax_template"] for row in group_templates}
 					
 					for item_code, group_name in item_to_group.items():

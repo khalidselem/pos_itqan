@@ -432,16 +432,31 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
             return
 
         # ── Step 1: Look up tax templates from Item master ─────────────
-        # Query tabItem Tax for item-level templates
+        # Query tabItem Tax for item-level templates, filtered by company
+        company = invoice_doc.get("company") or ""
         item_templates = {}
-        tax_results = frappe.db.sql(
-            """SELECT parent, item_tax_template
-            FROM `tabItem Tax`
-            WHERE parent IN %s AND parenttype = 'Item'
-            AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
-            (tuple(item_codes),),
-            as_dict=True,
-        )
+
+        if company:
+            tax_results = frappe.db.sql(
+                """SELECT it.parent, it.item_tax_template
+                FROM `tabItem Tax` it
+                JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+                WHERE it.parent IN %s AND it.parenttype = 'Item'
+                AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+                AND itt.company = %s""",
+                (tuple(item_codes), company),
+                as_dict=True,
+            )
+        else:
+            tax_results = frappe.db.sql(
+                """SELECT parent, item_tax_template
+                FROM `tabItem Tax`
+                WHERE parent IN %s AND parenttype = 'Item'
+                AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
+                (tuple(item_codes),),
+                as_dict=True,
+            )
+
         for row in tax_results:
             item_templates[row["parent"]] = row["item_tax_template"]
 
@@ -457,14 +472,26 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
 
             if item_to_group:
                 groups = list(set(item_to_group.values()))
-                group_results = frappe.db.sql(
-                    """SELECT parent, item_tax_template
-                    FROM `tabItem Tax`
-                    WHERE parent IN %s AND parenttype = 'Item Group'
-                    AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
-                    (tuple(groups),),
-                    as_dict=True,
-                )
+                if company:
+                    group_results = frappe.db.sql(
+                        """SELECT it.parent, it.item_tax_template
+                        FROM `tabItem Tax` it
+                        JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
+                        WHERE it.parent IN %s AND it.parenttype = 'Item Group'
+                        AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
+                        AND itt.company = %s""",
+                        (tuple(groups), company),
+                        as_dict=True,
+                    )
+                else:
+                    group_results = frappe.db.sql(
+                        """SELECT parent, item_tax_template
+                        FROM `tabItem Tax`
+                        WHERE parent IN %s AND parenttype = 'Item Group'
+                        AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
+                        (tuple(groups),),
+                        as_dict=True,
+                    )
                 group_templates = {r["parent"]: r["item_tax_template"] for r in group_results}
 
                 for ic, grp in item_to_group.items():
