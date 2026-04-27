@@ -83,7 +83,7 @@ class POSSettings(Document):
 
 
 @frappe.whitelist()
-def get_pos_settings(pos_profile):
+def get_pos_settings(pos_profile=None):
 	"""
 	Get POS Settings for a specific POS Profile.
 
