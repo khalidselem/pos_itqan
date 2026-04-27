@@ -138,7 +138,39 @@ def _apply_item_tax_overrides(doc):
 	zero_rate_map = {acct: 0 for acct in tax_accounts}
 	zero_rate_json = json.dumps(zero_rate_map)
 
+	# ── DIAGNOSTIC: Log state before overrides (visible in Error Log) ──
+	diag_items = []
+	for item in doc.get("items"):
+		if item.item_code:
+			diag_items.append({
+				"item_code": item.item_code,
+				"item_tax_template": item.get("item_tax_template") or "(empty)",
+				"item_tax_rate_BEFORE": item.get("item_tax_rate") or "(empty)",
+				"is_taxable_db": item.item_code in items_with_tax_in_db,
+				"is_taxable_row": bool(item.get("item_tax_template")),
+			})
+
+	diag_taxes = []
+	for t in doc.get("taxes", []):
+		diag_taxes.append({
+			"account_head": t.account_head,
+			"rate": t.rate,
+			"charge_type": t.charge_type,
+		})
+
+	frappe.log_error(
+		message=json.dumps({
+			"invoice": doc.name,
+			"items": diag_items,
+			"taxes": diag_taxes,
+			"taxes_and_charges": doc.taxes_and_charges,
+			"items_with_tax_in_db": list(items_with_tax_in_db),
+		}, indent=2, ensure_ascii=False, default=str),
+		title="POS Tax Debug: BEFORE overrides"
+	)
+
 	# ── Apply per-item overrides ───────────────────────────────────────
+	# ONLY modify NON-TAXABLE items. Do NOT touch taxable items at all.
 	taxable_count = 0
 	exempt_count = 0
 
@@ -147,20 +179,17 @@ def _apply_item_tax_overrides(doc):
 			continue
 
 		if _is_taxable(item):
-			# TAXABLE: clear item_tax_rate so ERPNext's
-			# validate_item_tax_template() will set it from the template.
-			# DO NOT touch item_tax_template — ERPNext needs it.
-			item.item_tax_rate = ""
+			# TAXABLE: DO NOT TOUCH. Leave item_tax_rate as-is.
+			# ERPNext's validate_item_tax_template() will handle it.
 			taxable_count += 1
 		else:
-			# NON-TAXABLE: force zero rate and clear template so
-			# validate_item_tax_template() won't overwrite our zero.
+			# NON-TAXABLE: force zero rate and clear template
 			item.item_tax_rate = zero_rate_json
 			item.item_tax_template = ""
 			exempt_count += 1
 
 	log.debug(
-		f"Tax overrides set: {taxable_count} taxable (cleared), "
+		f"Tax overrides set: {taxable_count} taxable (UNTOUCHED), "
 		f"{exempt_count} exempt (forced 0%). "
 		f"ERPNext will now calculate_taxes_and_totals()."
 	)
