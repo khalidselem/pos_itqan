@@ -432,75 +432,37 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
             return
 
         # ── Step 1: Look up tax templates from Item master ─────────────
-        # Query tabItem Tax for item-level templates, filtered by company.
         # NOTE: invoice_doc.company may be empty at this stage (before
         # set_missing_values), so we get company from POS Profile.
         company = invoice_doc.get("company") or ""
         if not company and pos_profile:
             company = frappe.db.get_value("POS Profile", pos_profile, "company") or ""
+            
         item_templates = {}
 
-        if company:
-            tax_results = frappe.db.sql(
-                """SELECT it.parent, it.item_tax_template
-                FROM `tabItem Tax` it
-                JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
-                WHERE it.parent IN %s AND it.parenttype = 'Item'
-                AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
-                AND itt.company = %s""",
-                (tuple(item_codes), company),
-                as_dict=True,
-            )
-        else:
-            tax_results = frappe.db.sql(
-                """SELECT parent, item_tax_template
-                FROM `tabItem Tax`
-                WHERE parent IN %s AND parenttype = 'Item'
-                AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
-                (tuple(item_codes),),
-                as_dict=True,
-            )
-
-        for row in tax_results:
-            item_templates[row["parent"]] = row["item_tax_template"]
-
-        # For items without direct template, check Item Group
-        items_without = [ic for ic in item_codes if ic not in item_templates]
-        if items_without:
-            item_details = frappe.get_all(
-                "Item",
-                filters={"name": ["in", items_without]},
-                fields=["name", "item_group"]
-            )
-            item_to_group = {r["name"]: r["item_group"] for r in item_details if r.get("item_group")}
-
-            if item_to_group:
-                groups = list(set(item_to_group.values()))
-                if company:
-                    group_results = frappe.db.sql(
-                        """SELECT it.parent, it.item_tax_template
-                        FROM `tabItem Tax` it
-                        JOIN `tabItem Tax Template` itt ON itt.name = it.item_tax_template
-                        WHERE it.parent IN %s AND it.parenttype = 'Item Group'
-                        AND (it.item_tax_template IS NOT NULL AND it.item_tax_template != '')
-                        AND itt.company = %s""",
-                        (tuple(groups), company),
-                        as_dict=True,
-                    )
-                else:
-                    group_results = frappe.db.sql(
-                        """SELECT parent, item_tax_template
-                        FROM `tabItem Tax`
-                        WHERE parent IN %s AND parenttype = 'Item Group'
-                        AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
-                        (tuple(groups),),
-                        as_dict=True,
-                    )
-                group_templates = {r["parent"]: r["item_tax_template"] for r in group_results}
-
-                for ic, grp in item_to_group.items():
-                    if grp in group_templates:
-                        item_templates[ic] = group_templates[grp]
+        for item_code in set(item_codes):
+            item_doc = frappe.get_cached_doc("Item", item_code)
+            tax_template = None
+            
+            # 1. Check Item's own taxes
+            for tax in item_doc.get("taxes") or []:
+                tax_company = frappe.get_cached_value("Item Tax Template", tax.item_tax_template, "company")
+                # Match company exactly, or apply if template has no company assigned
+                if not tax_company or tax_company == company:
+                    tax_template = tax.item_tax_template
+                    break
+            
+            # 2. Check Item Group's taxes
+            if not tax_template and item_doc.item_group:
+                group_doc = frappe.get_cached_doc("Item Group", item_doc.item_group)
+                for tax in group_doc.get("taxes") or []:
+                    tax_company = frappe.get_cached_value("Item Tax Template", tax.item_tax_template, "company")
+                    if not tax_company or tax_company == company:
+                        tax_template = tax.item_tax_template
+                        break
+            
+            if tax_template:
+                item_templates[item_code] = tax_template
 
         # ── Step 2: Load tax rates from templates ──────────────────────
         template_names = set(item_templates.values())
