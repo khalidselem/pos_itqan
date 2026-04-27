@@ -238,6 +238,7 @@ export function useInvoice() {
 				custom_cut_type: item.custom_cut_type || "",
 				// Tax flags and rates
 				has_item_tax_template: item.has_item_tax_template || false,
+				item_tax_template: item.item_tax_template || "",
 				item_tax_rate: item.item_tax_rate || "{}",
 			}
 			invoiceItems.value.push(newItem)
@@ -676,10 +677,16 @@ export function useInvoice() {
 	 */
 	function formatItemsForSubmission(items) {
 		return items.map((item) => {
-			// If item has no tax template, force all tax rates to 0 using item_tax_rate
-			// This tells the ERPNext backend to calculate 0 tax for this specific item
+			// Tax rate handling:
+			// - Items WITH tax template: send the original item_tax_rate from API
+			//   (contains the correct rate, e.g. {"VAT Account": 15})
+			// - Items WITHOUT tax template: force all tax rates to 0
 			let itemTaxRate = "";
-			if (!item.has_item_tax_template && taxRules.value && taxRules.value.length > 0) {
+			if (item.has_item_tax_template) {
+				// TAXABLE: preserve the original rate from the items API
+				itemTaxRate = item.item_tax_rate || "";
+			} else if (taxRules.value && taxRules.value.length > 0) {
+				// NON-TAXABLE: force zero on all tax accounts
 				const taxRateMap = {};
 				for (const rule of taxRules.value) {
 					if (rule.account_head) {
@@ -704,6 +711,7 @@ export function useInvoice() {
 				discount_amount: item.discount_amount || 0,
 				pricing_rules: stringifyPricingRules(item.pricing_rules),
 				item_tax_rate: itemTaxRate,
+				item_tax_template: item.has_item_tax_template ? (item.item_tax_template || "") : "",
 				custom_cut_type: item.custom_cut_type || "",
 				custom_sales_person: item.custom_sales_person || "",
 			}

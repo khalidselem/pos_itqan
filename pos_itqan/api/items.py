@@ -337,6 +337,7 @@ def get_item_detail(item, doc=None, warehouse=None, price_list=None, company=Non
 		)
 		if rates:
 			res["has_item_tax_template"] = True
+			res["item_tax_template"] = tax_template
 			tax_rate_map = {row["tax_type"]: row["tax_rate"] for row in rates}
 			res["item_tax_rate"] = json.dumps(tax_rate_map)
 		else:
@@ -1414,6 +1415,7 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 		for item in items:
 			item_code = item["item_code"]
 			item["has_item_tax_template"] = item_code in item_to_template
+			item["item_tax_template"] = item_to_template.get(item_code, "") or ""
 			item["item_tax_rate"] = item_tax_rates.get(item_code, "{}")
 
 		# Apply resolved barcode data (weighted/priced) to the first matching item
