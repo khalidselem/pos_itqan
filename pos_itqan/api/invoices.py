@@ -469,15 +469,34 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
         template_rates = {}  # template_name -> {account_head: rate}
 
         if template_names:
-            rates_data = frappe.db.sql(
-                """SELECT parent, tax_type, tax_rate
-                FROM `tabItem Tax Template Detail`
-                WHERE parent IN %s""",
-                (tuple(template_names),),
-                as_dict=True,
+            rates_data = frappe.get_all(
+                "Item Tax Template Detail",
+                filters={"parent": ["in", list(template_names)]},
+                fields=["parent", "tax_type", "tax_rate"]
             )
             for row in rates_data:
-                template_rates.setdefault(row["parent"], {})[row["tax_type"]] = row["tax_rate"]
+                template_rates.setdefault(row.parent, {})[row.tax_type] = row.tax_rate
+
+        # ── Step 3: Ensure ALL required tax accounts are in doc.taxes ──
+        # ERPNext ignores item_tax_rate if the account_head is missing from the parent taxes table.
+        existing_accounts = {t.account_head for t in invoice_doc.get("taxes", []) if t.account_head}
+        
+        # Check if POS Profile expects taxes to be inclusive
+        tax_inclusive_price = 0
+        if pos_profile:
+            tax_inclusive_price = frappe.db.get_value("POS Profile", pos_profile, "tax_inclusive_price") or 0
+        
+        for template_name, rates_dict in template_rates.items():
+            for account_head in rates_dict.keys():
+                if account_head not in existing_accounts:
+                    invoice_doc.append("taxes", {
+                        "charge_type": "On Net Total",
+                        "account_head": account_head,
+                        "rate": 0, # Default rate is 0; item_tax_rate will override this for taxable items
+                        "description": account_head,
+                        "included_in_print_rate": tax_inclusive_price,
+                    })
+                    existing_accounts.add(account_head)
 
         # ── Step 3: Ensure doc.taxes has rows ──────────────────────────
         has_taxable = bool(item_templates)
