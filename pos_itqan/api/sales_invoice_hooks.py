@@ -167,9 +167,10 @@ def _enforce_item_level_tax(doc):
 	zero_rate_map = {acct: 0 for acct in tax_accounts}
 	zero_rate_json = json.dumps(zero_rate_map)
 
-	# ── Force overrides ONLY on non-taxable items ─────────────────────
-	# CRITICAL: We check BOTH the DB query AND item.item_tax_template.
-	# If EITHER indicates the item is taxable, we DO NOT touch it.
+	# ── Apply per-item overrides ──────────────────────────────────────
+	# TAXABLE items: CLEAR item_tax_rate so ERPNext uses the global tax.rate
+	#   (if item_tax_rate contains ANY value, ERPNext uses it instead of global)
+	# NON-TAXABLE items: SET item_tax_rate = {"account": 0} to force zero
 	overridden_count = 0
 	preserved_count = 0
 	for item in doc.get("items"):
@@ -177,14 +178,16 @@ def _enforce_item_level_tax(doc):
 			continue
 
 		if _is_item_taxable(item):
-			# TAXABLE — do NOT modify, let ERPNext handle normally
+			# TAXABLE — clear any stale item_tax_rate overrides.
+			# This forces ERPNext's _get_tax_rate() to fall back to
+			# tax.rate (the global rate from doc.taxes), which is correct.
+			item.item_tax_rate = ""
 			preserved_count += 1
-			continue
-
-		# NON-TAXABLE — force zero tax
-		item.item_tax_rate = zero_rate_json
-		item.item_tax_template = ""  # Prevent ERPNext from overwriting
-		overridden_count += 1
+		else:
+			# NON-TAXABLE — force zero tax on all accounts
+			item.item_tax_rate = zero_rate_json
+			item.item_tax_template = ""
+			overridden_count += 1
 
 	# ── Recalculate with correct overrides ─────────────────────────────
 	doc.calculate_taxes_and_totals()
