@@ -408,6 +408,141 @@ def validate_return_items(original_invoice_name, return_items, doctype="Sales In
 
 
 # ==========================================
+# Tax Data Population for POS Items
+# ==========================================
+
+def _populate_item_tax_data(invoice_doc, pos_profile):
+    """
+    Explicitly populate item_tax_template and item_tax_rate on each item
+    from the Item master / Item Group. Also ensures doc.taxes has rows.
+
+    This is needed because POS items come from raw frontend data without
+    item_tax_template. ERPNext's set_missing_values() does NOT reliably
+    populate this for programmatically-created POS invoices.
+
+    Must run BEFORE set_missing_values() and calculate_taxes_and_totals().
+    """
+    try:
+        items = invoice_doc.get("items", [])
+        if not items:
+            return
+
+        item_codes = [item.item_code for item in items if item.item_code]
+        if not item_codes:
+            return
+
+        # ── Step 1: Look up tax templates from Item master ─────────────
+        # Query tabItem Tax for item-level templates
+        item_templates = {}
+        tax_results = frappe.db.sql(
+            """SELECT parent, item_tax_template
+            FROM `tabItem Tax`
+            WHERE parent IN %s AND parenttype = 'Item'
+            AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
+            (tuple(item_codes),),
+            as_dict=True,
+        )
+        for row in tax_results:
+            item_templates[row["parent"]] = row["item_tax_template"]
+
+        # For items without direct template, check Item Group
+        items_without = [ic for ic in item_codes if ic not in item_templates]
+        if items_without:
+            item_details = frappe.get_all(
+                "Item",
+                filters={"name": ["in", items_without]},
+                fields=["name", "item_group"]
+            )
+            item_to_group = {r["name"]: r["item_group"] for r in item_details if r.get("item_group")}
+
+            if item_to_group:
+                groups = list(set(item_to_group.values()))
+                group_results = frappe.db.sql(
+                    """SELECT parent, item_tax_template
+                    FROM `tabItem Tax`
+                    WHERE parent IN %s AND parenttype = 'Item Group'
+                    AND (item_tax_template IS NOT NULL AND item_tax_template != '')""",
+                    (tuple(groups),),
+                    as_dict=True,
+                )
+                group_templates = {r["parent"]: r["item_tax_template"] for r in group_results}
+
+                for ic, grp in item_to_group.items():
+                    if grp in group_templates:
+                        item_templates[ic] = group_templates[grp]
+
+        # ── Step 2: Load tax rates from templates ──────────────────────
+        template_names = set(item_templates.values())
+        template_rates = {}  # template_name -> {account_head: rate}
+
+        if template_names:
+            rates_data = frappe.db.sql(
+                """SELECT parent, tax_type, tax_rate
+                FROM `tabItem Tax Template Detail`
+                WHERE parent IN %s""",
+                (tuple(template_names),),
+                as_dict=True,
+            )
+            for row in rates_data:
+                template_rates.setdefault(row["parent"], {})[row["tax_type"]] = row["tax_rate"]
+
+        # ── Step 3: Ensure doc.taxes has rows ──────────────────────────
+        has_taxable = bool(item_templates)
+
+        if has_taxable and (not invoice_doc.get("taxes") or len(invoice_doc.get("taxes")) == 0):
+            # Get template from POS Profile
+            template_name = invoice_doc.taxes_and_charges
+            if not template_name and pos_profile:
+                template_name = frappe.db.get_value(
+                    "POS Profile", pos_profile, "taxes_and_charges"
+                )
+
+            if template_name:
+                invoice_doc.taxes_and_charges = template_name
+                try:
+                    template_doc = frappe.get_cached_doc(
+                        "Sales Taxes and Charges Template", template_name
+                    )
+                    for tax_row in template_doc.taxes:
+                        invoice_doc.append("taxes", {
+                            "charge_type": tax_row.charge_type,
+                            "account_head": tax_row.account_head,
+                            "rate": tax_row.rate,
+                            "description": tax_row.description or tax_row.account_head,
+                            "included_in_print_rate": getattr(tax_row, "included_in_print_rate", 0),
+                        })
+                except Exception:
+                    pass
+
+        # ── Step 4: Get tax account heads for zero-rate map ────────────
+        tax_accounts = [t.account_head for t in invoice_doc.get("taxes", []) if t.account_head]
+        zero_rate_json = json.dumps({acct: 0 for acct in tax_accounts}) if tax_accounts else "{}"
+
+        # ── Step 5: Set item_tax_template and item_tax_rate on each item
+        for item in items:
+            if not item.item_code:
+                continue
+
+            template_name = item_templates.get(item.item_code)
+
+            if template_name and template_name in template_rates:
+                # TAXABLE: set template name + tax rates from template
+                item.item_tax_template = template_name
+                item.item_tax_rate = json.dumps(template_rates[template_name])
+            else:
+                # NON-TAXABLE: force zero rate, clear template
+                item.item_tax_template = ""
+                if tax_accounts:
+                    item.item_tax_rate = zero_rate_json
+
+    except Exception as e:
+        frappe.log_error(
+            f"Error populating item tax data: {e}\n{frappe.get_traceback()}",
+            "POS Tax Population Error"
+        )
+
+
+# ==========================================
 # Invoice Management (Two-Step Flow)
 # ==========================================
 
@@ -615,6 +750,17 @@ def update_invoice(data):
                 frappe.log_error(f"Error loading rounding setting: {str(e)}", "POS Invoice Creation")
 
         invoice_doc.disable_rounded_total = disable_rounded
+
+        # ========================================================================
+        # TAX DATA POPULATION (CRITICAL FOR POS)
+        # ========================================================================
+        # POS items are created from raw frontend data, so item_tax_template
+        # and item_tax_rate are NOT automatically populated by ERPNext.
+        # We must explicitly set them BEFORE set_missing_values() and
+        # calculate_taxes_and_totals() so ERPNext can calculate correctly.
+        # ========================================================================
+        if doctype == "Sales Invoice" and invoice_doc.is_pos:
+            _populate_item_tax_data(invoice_doc, pos_profile)
 
         # Populate missing fields (company, currency, accounts, etc.)
         invoice_doc.set_missing_values()
