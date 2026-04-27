@@ -5,20 +5,24 @@
 Sales Invoice Hooks
 Event handlers for Sales Invoice document events
 
-Tax Strategy:
-─────────────
-We NEVER disable ERPNext's tax engine. Instead, we control tax at the ITEM level
-using `item_tax_rate` overrides:
+Tax Strategy (Final):
+─────────────────────
+ERPNext applies taxes globally when doc.taxes exists. To achieve per-item
+tax control, we use item_tax_rate overrides AND we must apply them AFTER
+ERPNext's own validate() + calculate_taxes_and_totals() runs.
 
-  • Items WITH an Item Tax Template → left untouched (ERPNext applies normal tax)
-  • Items WITHOUT an Item Tax Template → item_tax_rate forced to {"account": 0}
+Why? Because ERPNext's calculate_taxes_and_totals() calls
+validate_item_tax_template() which OVERWRITES item_tax_rate from the
+item_tax_template field. Our overrides set in before_validate get wiped.
 
-The doc.taxes table is ALWAYS preserved when there are taxable items, because
-ERPNext requires it to:
-  1. Calculate tax totals
-  2. Generate GL entries (VAT Payable credit)
+Solution: The validate hook (runs AFTER ERPNext's validate) has the FINAL
+WORD. It re-applies item_tax_rate overrides and calls
+calculate_taxes_and_totals() one more time with the correct data.
 
-Without tax rows, even correct item_tax_rate values produce NO accounting entries.
+Flow:
+  1. before_validate (ours) → ensure tax rows exist, handle all-exempt case
+  2. validate (ERPNext's)   → calculate_taxes_and_totals() (may overwrite)
+  3. validate (ours)        → FINAL: re-apply overrides + recalculate
 """
 
 import json
@@ -31,64 +35,89 @@ from frappe.utils import cint
 # ──────────────────────────────────────────────────────────────────────────────
 # HOOK: before_validate
 # ──────────────────────────────────────────────────────────────────────────────
-# Runs BEFORE ERPNext's own validate() method.
-# This is where we:
-#   1. Ensure doc.taxes has rows (populate from template if missing)
-#   2. Set item_tax_rate = 0 for non-VAT items
-#   3. Apply tax-inclusive flag
-# ERPNext's validate() then calls calculate_taxes_and_totals() with our data.
+# Runs BEFORE ERPNext's own validate().
+# Handles setup work:
+#   - All-exempt case: clear taxes early (optimization)
+#   - Ensure tax rows exist for ERPNext's calculate to work
+#   - Set tax-inclusive flag
 # ──────────────────────────────────────────────────────────────────────────────
 
 def before_validate(doc, method=None):
 	"""
-	Runs BEFORE standard Frappe/ERPNext validation.
-	Sets up tax rows and item-level overrides so that when ERPNext's
-	calculate_taxes_and_totals() runs during validate(), it has correct data.
+	Setup phase. Ensures doc.taxes exists and flags are set.
+	The actual item_tax_rate enforcement happens in the validate hook.
 	"""
 	if not doc.is_pos:
 		return
 
 	try:
-		_apply_item_level_tax_overrides(doc)
-	except Exception as e:
-		frappe.log_error(
-			f"Error in item-level tax override: {e}\n{frappe.get_traceback()}",
-			"POS VAT Override Error"
+		item_codes = [item.item_code for item in doc.get("items") if item.item_code]
+		if not item_codes:
+			return
+
+		items_with_tax = _get_items_with_tax_template(item_codes)
+		has_any_vat_item = any(
+			item.item_code in items_with_tax
+			for item in doc.get("items")
+			if item.item_code
 		)
 
-	_apply_tax_inclusive_flag(doc)
+		if not has_any_vat_item:
+			# ALL items are tax-exempt → clear taxes entirely
+			doc.taxes_and_charges = None
+			doc.set("taxes", [])
+			return
+
+		# Ensure tax rows exist for ERPNext's calculate_taxes_and_totals()
+		_ensure_tax_rows_exist(doc)
+
+		# Set tax-inclusive flag before ERPNext calculates
+		_apply_tax_inclusive_flag(doc)
+
+	except Exception as e:
+		frappe.log_error(
+			f"Error in before_validate tax setup: {e}\n{frappe.get_traceback()}",
+			"POS VAT Override Error"
+		)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HOOK: validate
 # ──────────────────────────────────────────────────────────────────────────────
 # Runs AFTER ERPNext's own validate() and calculate_taxes_and_totals().
-# This is our safety net: if taxes were somehow cleared during validation,
-# we re-inject them and recalculate.
+# This is the FINAL WORD on tax calculation.
+#
+# ERPNext's calculate_taxes_and_totals() calls validate_item_tax_template()
+# which overwrites item_tax_rate. So we must re-apply our overrides HERE
+# and recalculate.
 # ──────────────────────────────────────────────────────────────────────────────
 
 def validate(doc, method=None):
 	"""
-	Validate hook for Sales Invoice.
-	Runs AFTER ERPNext's own validate() + calculate_taxes_and_totals().
-
-	Safety net: if doc.taxes got cleared during the validate cycle,
-	re-inject them and force a recalculation.
+	FINAL tax enforcement. Runs AFTER ERPNext's own validate.
+	Re-applies item_tax_rate overrides and recalculates.
 	"""
 	if doc.is_pos:
-		_safety_net_ensure_taxes(doc)
+		_enforce_item_level_tax(doc)
 
 	auto_assign_loyalty_program_on_invoice(doc)
 	set_source_warehouse_from_pos_profile(doc)
 
 
-def _safety_net_ensure_taxes(doc):
+def _enforce_item_level_tax(doc):
 	"""
-	Post-validation safety net.
-	If doc.taxes is empty but there ARE taxable items, re-inject tax rows
-	and force recalculation. This catches edge cases where ERPNext's own
-	validate() cleared our tax rows.
+	The AUTHORITATIVE, FINAL tax enforcement.
+	Runs AFTER ERPNext's own validate() + calculate_taxes_and_totals().
+
+	This function:
+	  1. Determines which items are taxable
+	  2. Ensures doc.taxes has rows (for GL entries)
+	  3. Forces item_tax_rate = {"account": 0} for non-VAT items
+	  4. Clears item_tax_template on non-VAT items (prevents ERPNext overwrite)
+	  5. Calls calculate_taxes_and_totals() to recalculate with correct data
 	"""
+	log = frappe.logger("pos_tax", allow_site=True)
+
 	item_codes = [item.item_code for item in doc.get("items") if item.item_code]
 	if not item_codes:
 		return
@@ -100,101 +129,63 @@ def _safety_net_ensure_taxes(doc):
 		if item.item_code
 	)
 
-	if not has_any_vat_item:
-		return  # All exempt — no taxes needed
-
-	# If taxes exist, everything is fine
-	if doc.get("taxes") and len(doc.get("taxes")) > 0:
-		return
-
-	# TAXES ARE MISSING but we have taxable items → re-inject
-	log = frappe.logger("pos_tax", allow_site=True)
-	log.debug("Safety net: doc.taxes empty after validate — re-injecting")
-
-	_ensure_tax_rows_exist(doc)
-	_apply_tax_inclusive_flag(doc)
-
-	if doc.get("taxes") and len(doc.get("taxes")) > 0:
-		# Force item_tax_rate overrides again
-		tax_accounts = [t.account_head for t in doc.get("taxes") if t.account_head]
-		if tax_accounts:
-			zero_rate_map = {acct: 0 for acct in tax_accounts}
-			zero_rate_json = json.dumps(zero_rate_map)
-			for item in doc.get("items"):
-				if item.item_code and item.item_code not in items_with_tax:
-					item.item_tax_rate = zero_rate_json
-
-		# Recalculate with the correct data
-		doc.calculate_taxes_and_totals()
-		log.debug(f"Safety net: recalculated — total_taxes_and_charges = {doc.total_taxes_and_charges}")
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# CORE LOGIC
-# ──────────────────────────────────────────────────────────────────────────────
-
-def _apply_item_level_tax_overrides(doc):
-	"""
-	Core tax override logic:
-	  1. Determines which items are taxable (have Item Tax Template)
-	  2. If ALL exempt → clear doc.taxes entirely
-	  3. If ANY taxable → ensure doc.taxes has rows, then force 0% on non-VAT items
-	"""
-	log = frappe.logger("pos_tax", allow_site=True)
-
-	item_codes = [item.item_code for item in doc.get("items") if item.item_code]
-	if not item_codes:
-		return
-
-	# ── Step 1: Determine which items are taxable ──────────────────────
-	items_with_tax = _get_items_with_tax_template(item_codes)
-
-	has_any_vat_item = any(
-		item.item_code in items_with_tax
-		for item in doc.get("items")
-		if item.item_code
-	)
-
-	# ── Step 2: Handle the all-exempt case ─────────────────────────────
+	# ── All-exempt: clear taxes ────────────────────────────────────────
 	if not has_any_vat_item:
 		doc.taxes_and_charges = None
 		doc.set("taxes", [])
-		log.debug("All items tax-exempt — cleared taxes table")
+		doc.total_taxes_and_charges = 0
+		doc.calculate_taxes_and_totals()
+		log.debug("All items tax-exempt — cleared taxes and recalculated")
 		return
 
-	# ── Step 3: ENSURE tax rows exist ──────────────────────────────────
+	# ── Ensure tax rows exist ──────────────────────────────────────────
 	_ensure_tax_rows_exist(doc)
 
-	# ── Step 4: Get tax accounts and force 0% on non-VAT items ────────
-	tax_accounts = [t.account_head for t in doc.get("taxes", []) if t.account_head]
+	if not doc.get("taxes") or len(doc.get("taxes")) == 0:
+		log.debug("Could not populate tax rows — skipping enforcement")
+		return
 
+	# ── Apply tax-inclusive flag ────────────────────────────────────────
+	_apply_tax_inclusive_flag(doc)
+
+	# ── Build zero-rate map from actual tax rows ───────────────────────
+	tax_accounts = [t.account_head for t in doc.get("taxes") if t.account_head]
 	if not tax_accounts:
-		log.debug("No tax accounts found after ensure — skipping overrides")
 		return
 
 	zero_rate_map = {acct: 0 for acct in tax_accounts}
 	zero_rate_json = json.dumps(zero_rate_map)
 
+	# ── Force overrides on non-VAT items ───────────────────────────────
+	# CRITICAL: We also clear item_tax_template on non-VAT items.
+	# This prevents ERPNext's validate_item_tax_template() (called inside
+	# calculate_taxes_and_totals) from overwriting our item_tax_rate.
+	overridden_count = 0
 	for item in doc.get("items"):
 		if item.item_code and item.item_code not in items_with_tax:
 			item.item_tax_rate = zero_rate_json
-			log.debug(f"Forced 0% tax for non-VAT item: {item.item_code}")
+			item.item_tax_template = ""  # Prevent ERPNext from overwriting
+			overridden_count += 1
 
+	# ── Recalculate with correct overrides ─────────────────────────────
+	# This is the FINAL calculation. Our item_tax_rate overrides are locked
+	# in, and item_tax_template is cleared for non-VAT items so
+	# validate_item_tax_template() won't overwrite them.
+	doc.calculate_taxes_and_totals()
+
+	log.debug(
+		f"Tax enforcement complete: {overridden_count} items forced to 0%, "
+		f"total_taxes = {doc.total_taxes_and_charges}"
+	)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPER FUNCTIONS
+# ──────────────────────────────────────────────────────────────────────────────
 
 def _ensure_tax_rows_exist(doc):
 	"""
 	Ensures doc.taxes has at least one row when there are taxable items.
-
-	ERPNext's calculate_taxes_and_totals() requires doc.taxes to have rows.
-	Without them:
-	  - Tax totals will be 0
-	  - No GL entry for VAT Payable is generated
-	  - Tax amounts are silently absorbed into other accounts
-
-	Populates from:
-	  1. The taxes_and_charges template already on the doc
-	  2. The POS Profile's taxes_and_charges (fallback)
-
 	IDEMPOTENT: if doc.taxes already has rows, does nothing.
 	"""
 	if doc.get("taxes") and len(doc.get("taxes")) > 0:
@@ -202,9 +193,8 @@ def _ensure_tax_rows_exist(doc):
 
 	log = frappe.logger("pos_tax", allow_site=True)
 
-	# ── Resolve template name ──────────────────────────────────────────
+	# Resolve template name
 	template_name = doc.taxes_and_charges
-
 	if not template_name and doc.pos_profile:
 		template_name = frappe.db.get_value(
 			"POS Profile", doc.pos_profile, "taxes_and_charges"
@@ -217,13 +207,13 @@ def _ensure_tax_rows_exist(doc):
 		log.debug("No tax template found — cannot populate doc.taxes")
 		return
 
-	# ── Load template and create tax rows ──────────────────────────────
+	# Load template and create tax rows
 	try:
 		template_doc = frappe.get_cached_doc(
 			"Sales Taxes and Charges Template", template_name
 		)
 	except frappe.DoesNotExistError:
-		log.debug(f"Tax template '{template_name}' not found in DB")
+		log.debug(f"Tax template '{template_name}' not found")
 		return
 
 	if not template_doc.taxes:
@@ -240,7 +230,7 @@ def _ensure_tax_rows_exist(doc):
 		})
 
 	log.debug(
-		f"Injected {len(template_doc.taxes)} tax row(s) from template '{template_name}'"
+		f"Injected {len(template_doc.taxes)} tax row(s) from '{template_name}'"
 	)
 
 
@@ -289,7 +279,6 @@ def _get_items_with_tax_template(item_codes):
 def _apply_tax_inclusive_flag(doc):
 	"""
 	Set the included_in_print_rate flag on tax rows based on POS Settings.
-	Does NOT call calculate_taxes_and_totals() — ERPNext does that.
 	"""
 	if not doc.pos_profile or not doc.get("taxes"):
 		return
