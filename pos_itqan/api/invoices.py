@@ -509,6 +509,11 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
         # ERPNext ignores item_tax_rate if the account_head is missing from the parent taxes table.
         existing_accounts = {t.account_head for t in invoice_doc.get("taxes", []) if t.account_head}
         
+        # Check if POS Profile expects taxes to be inclusive
+        tax_inclusive_price = 0
+        if pos_profile:
+            tax_inclusive_price = frappe.db.get_value("POS Profile", pos_profile, "tax_inclusive_price") or 0
+        
         for template_name, rates_dict in template_rates.items():
             for account_head in rates_dict.keys():
                 if account_head not in existing_accounts:
@@ -517,6 +522,7 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
                         "account_head": account_head,
                         "rate": 0, # Default rate is 0; item_tax_rate will override this for taxable items
                         "description": account_head,
+                        "included_in_print_rate": tax_inclusive_price,
                     })
                     existing_accounts.add(account_head)
 
