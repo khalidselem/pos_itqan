@@ -1565,6 +1565,43 @@ def submit_invoice(invoice=None, data=None):
                             "allocated_percentage": member.get("allocated_percentage", 0),
                         })
 
+        # Ensure POS Invoice is fully paid to prevent "Unpaid" status
+        if doctype == "Sales Invoice" and invoice_doc.is_pos and not invoice_doc.get("is_return"):
+            grand_total = flt(invoice_doc.grand_total)
+            current_paid = sum(flt(p.amount) for p in invoice_doc.get("payments", []))
+            
+            # If the payment does not match the grand total, auto-adjust it
+            if current_paid != grand_total:
+                if invoice_doc.get("payments"):
+                    # Adjust the first payment method to cover the difference
+                    first_payment = invoice_doc.payments[0]
+                    first_payment.amount = grand_total - (current_paid - flt(first_payment.amount))
+                else:
+                    # If no payments exist at all, add the default payment method
+                    default_mode = None
+                    if pos_profile:
+                        default_mode = frappe.db.get_value("POS Payment Method", {"parent": pos_profile, "default": 1}, "mode_of_payment")
+                        if not default_mode:
+                            default_mode = frappe.db.get_value("POS Payment Method", {"parent": pos_profile}, "mode_of_payment")
+                    
+                    if default_mode:
+                        account = None
+                        try:
+                            acc_info = get_payment_account(default_mode, invoice_doc.company)
+                            if acc_info:
+                                account = acc_info.get("account")
+                        except Exception as e:
+                            frappe.log_error(f"Failed to get payment account for {default_mode}: {e}", "Payment Account Lookup")
+
+                        invoice_doc.append("payments", {
+                            "mode_of_payment": default_mode,
+                            "amount": grand_total,
+                            "account": account
+                        })
+            
+            # Explicitly force paid_amount to match the payments table
+            invoice_doc.paid_amount = sum(flt(p.amount) for p in invoice_doc.get("payments", []))
+
         # Handle POS Coupon if coupon_code is provided
         coupon_code = invoice.get("coupon_code") or data.get("coupon_code")
         if coupon_code:
