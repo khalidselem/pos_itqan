@@ -57,7 +57,7 @@ def before_validate(doc, method=None):
 
 		items_with_tax = _get_items_with_tax_template(item_codes)
 		has_any_vat_item = any(
-			item.item_code in items_with_tax
+			(item.item_code in items_with_tax) or item.get("item_tax_template")
 			for item in doc.get("items")
 			if item.item_code
 		)
@@ -109,12 +109,11 @@ def _enforce_item_level_tax(doc):
 	The AUTHORITATIVE, FINAL tax enforcement.
 	Runs AFTER ERPNext's own validate() + calculate_taxes_and_totals().
 
-	This function:
-	  1. Determines which items are taxable
-	  2. Ensures doc.taxes has rows (for GL entries)
-	  3. Forces item_tax_rate = {"account": 0} for non-VAT items
-	  4. Clears item_tax_template on non-VAT items (prevents ERPNext overwrite)
-	  5. Calls calculate_taxes_and_totals() to recalculate with correct data
+	Determines taxability using TWO checks (dual-check):
+	  1. DB query: does the Item master / Item Group have rows in tabItem Tax?
+	  2. Invoice row: does item.item_tax_template have a value?
+	If EITHER is true, the item is taxable and we DO NOT touch it.
+	Only items that fail BOTH checks get forced to 0%.
 	"""
 	log = frappe.logger("pos_tax", allow_site=True)
 
@@ -122,9 +121,21 @@ def _enforce_item_level_tax(doc):
 	if not item_codes:
 		return
 
-	items_with_tax = _get_items_with_tax_template(item_codes)
+	# DB-level check: which items have tax templates in their master data
+	items_with_tax_in_db = _get_items_with_tax_template(item_codes)
+
+	# Dual-check: an item is taxable if EITHER:
+	#   - DB query found a tax template for it, OR
+	#   - The invoice row has item_tax_template set (by ERPNext's set_missing_values)
+	def _is_item_taxable(item):
+		if item.item_code in items_with_tax_in_db:
+			return True
+		if item.get("item_tax_template"):
+			return True
+		return False
+
 	has_any_vat_item = any(
-		item.item_code in items_with_tax
+		_is_item_taxable(item)
 		for item in doc.get("items")
 		if item.item_code
 	)
@@ -156,25 +167,31 @@ def _enforce_item_level_tax(doc):
 	zero_rate_map = {acct: 0 for acct in tax_accounts}
 	zero_rate_json = json.dumps(zero_rate_map)
 
-	# ── Force overrides on non-VAT items ───────────────────────────────
-	# CRITICAL: We also clear item_tax_template on non-VAT items.
-	# This prevents ERPNext's validate_item_tax_template() (called inside
-	# calculate_taxes_and_totals) from overwriting our item_tax_rate.
+	# ── Force overrides ONLY on non-taxable items ─────────────────────
+	# CRITICAL: We check BOTH the DB query AND item.item_tax_template.
+	# If EITHER indicates the item is taxable, we DO NOT touch it.
 	overridden_count = 0
+	preserved_count = 0
 	for item in doc.get("items"):
-		if item.item_code and item.item_code not in items_with_tax:
-			item.item_tax_rate = zero_rate_json
-			item.item_tax_template = ""  # Prevent ERPNext from overwriting
-			overridden_count += 1
+		if not item.item_code:
+			continue
+
+		if _is_item_taxable(item):
+			# TAXABLE — do NOT modify, let ERPNext handle normally
+			preserved_count += 1
+			continue
+
+		# NON-TAXABLE — force zero tax
+		item.item_tax_rate = zero_rate_json
+		item.item_tax_template = ""  # Prevent ERPNext from overwriting
+		overridden_count += 1
 
 	# ── Recalculate with correct overrides ─────────────────────────────
-	# This is the FINAL calculation. Our item_tax_rate overrides are locked
-	# in, and item_tax_template is cleared for non-VAT items so
-	# validate_item_tax_template() won't overwrite them.
 	doc.calculate_taxes_and_totals()
 
 	log.debug(
-		f"Tax enforcement complete: {overridden_count} items forced to 0%, "
+		f"Tax enforcement: {preserved_count} taxable (untouched), "
+		f"{overridden_count} non-taxable (forced 0%), "
 		f"total_taxes = {doc.total_taxes_and_charges}"
 	)
 
