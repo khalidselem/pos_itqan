@@ -1378,13 +1378,17 @@ def get_items(pos_profile, search_term=None, item_group=None, start=0, limit=20)
 				# 2. Fetch rates for all unique templates found
 				template_rates = {}
 				if template_names:
-					rates_data = frappe.get_all(
-						"Item Tax Template Detail",
-						filters={"parent": ["in", list(template_names)]},
-						fields=["parent", "tax_type", "tax_rate"]
+					rates_data = frappe.db.sql(
+						"""
+						SELECT parent, tax_type, tax_rate
+						FROM `tabItem Tax Template Detail`
+						WHERE parent IN %s
+						""",
+						(tuple(template_names),),
+						as_dict=True,
 					)
 					for row in rates_data:
-						template_rates.setdefault(row.parent, {})[row.tax_type] = row.tax_rate
+						template_rates.setdefault(row["parent"], {})[row["tax_type"]] = row["tax_rate"]
 
 				# 3. Map rates back to items
 				for item_code, template_name in item_to_template.items():
