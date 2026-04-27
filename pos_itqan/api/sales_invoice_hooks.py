@@ -5,24 +5,22 @@
 Sales Invoice Hooks
 Event handlers for Sales Invoice document events
 
-Tax Strategy (Final):
-─────────────────────
-ERPNext applies taxes globally when doc.taxes exists. To achieve per-item
-tax control, we use item_tax_rate overrides AND we must apply them AFTER
-ERPNext's own validate() + calculate_taxes_and_totals() runs.
+Tax Strategy:
+─────────────
+All tax overrides happen in before_validate, BEFORE ERPNext's own
+validate() → calculate_taxes_and_totals() runs. We NEVER call
+calculate_taxes_and_totals() ourselves.
 
-Why? Because ERPNext's calculate_taxes_and_totals() calls
-validate_item_tax_template() which OVERWRITES item_tax_rate from the
-item_tax_template field. Our overrides set in before_validate get wiped.
+For taxable items (have Item Tax Template):
+  → We clear item_tax_rate to "" (empty)
+  → ERPNext's validate_item_tax_template() then sets it from the template
+  → ERPNext calculates the correct tax
 
-Solution: The validate hook (runs AFTER ERPNext's validate) has the FINAL
-WORD. It re-applies item_tax_rate overrides and calls
-calculate_taxes_and_totals() one more time with the correct data.
-
-Flow:
-  1. before_validate (ours) → ensure tax rows exist, handle all-exempt case
-  2. validate (ERPNext's)   → calculate_taxes_and_totals() (may overwrite)
-  3. validate (ours)        → FINAL: re-apply overrides + recalculate
+For non-taxable items (no Item Tax Template):
+  → We set item_tax_rate = {"account": 0} (force zero)
+  → We clear item_tax_template = "" (prevent ERPNext from overwriting)
+  → ERPNext's validate_item_tax_template() skips them (no template)
+  → ERPNext's _get_tax_rate() finds the account → returns 0
 """
 
 import json
@@ -32,88 +30,65 @@ from frappe import _
 from frappe.utils import cint
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# HOOK: before_validate
-# ──────────────────────────────────────────────────────────────────────────────
-# Runs BEFORE ERPNext's own validate().
-# Handles setup work:
-#   - All-exempt case: clear taxes early (optimization)
-#   - Ensure tax rows exist for ERPNext's calculate to work
-#   - Set tax-inclusive flag
-# ──────────────────────────────────────────────────────────────────────────────
-
 def before_validate(doc, method=None):
 	"""
-	Setup phase. Ensures doc.taxes exists and flags are set.
-	The actual item_tax_rate enforcement happens in the validate hook.
+	Runs BEFORE ERPNext's own validate() → calculate_taxes_and_totals().
+
+	This is the ONLY place where we modify tax data. We:
+	  1. Ensure doc.taxes has rows (required for GL entries)
+	  2. Clear item_tax_rate on taxable items (let ERPNext set from template)
+	  3. Force item_tax_rate = {"account": 0} on non-taxable items
+	  4. Set tax-inclusive flag
+
+	Then ERPNext's own validate() calls calculate_taxes_and_totals()
+	which uses our prepared data to calculate correctly.
 	"""
 	if not doc.is_pos:
 		return
 
 	try:
-		item_codes = [item.item_code for item in doc.get("items") if item.item_code]
-		if not item_codes:
-			return
-
-		items_with_tax = _get_items_with_tax_template(item_codes)
-		has_any_vat_item = any(
-			(item.item_code in items_with_tax) or item.get("item_tax_template")
-			for item in doc.get("items")
-			if item.item_code
-		)
-
-		if not has_any_vat_item:
-			# ALL items are tax-exempt → clear taxes entirely
-			doc.taxes_and_charges = None
-			doc.set("taxes", [])
-			return
-
-		# Ensure tax rows exist for ERPNext's calculate_taxes_and_totals()
-		_ensure_tax_rows_exist(doc)
-
-		# Set tax-inclusive flag before ERPNext calculates
-		_apply_tax_inclusive_flag(doc)
-
+		_apply_item_tax_overrides(doc)
 	except Exception as e:
 		frappe.log_error(
-			f"Error in before_validate tax setup: {e}\n{frappe.get_traceback()}",
+			f"POS tax override error: {e}\n{frappe.get_traceback()}",
 			"POS VAT Override Error"
 		)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# HOOK: validate
-# ──────────────────────────────────────────────────────────────────────────────
-# Runs AFTER ERPNext's own validate() and calculate_taxes_and_totals().
-# This is the FINAL WORD on tax calculation.
-#
-# ERPNext's calculate_taxes_and_totals() calls validate_item_tax_template()
-# which overwrites item_tax_rate. So we must re-apply our overrides HERE
-# and recalculate.
-# ──────────────────────────────────────────────────────────────────────────────
-
 def validate(doc, method=None):
 	"""
-	FINAL tax enforcement. Runs AFTER ERPNext's own validate.
-	Re-applies item_tax_rate overrides and recalculates.
+	Runs AFTER ERPNext's own validate() + calculate_taxes_and_totals().
+	NO tax logic here — ERPNext already calculated correctly using our
+	before_validate overrides.
 	"""
-	if doc.is_pos:
-		_enforce_item_level_tax(doc)
-
 	auto_assign_loyalty_program_on_invoice(doc)
 	set_source_warehouse_from_pos_profile(doc)
 
 
-def _enforce_item_level_tax(doc):
-	"""
-	The AUTHORITATIVE, FINAL tax enforcement.
-	Runs AFTER ERPNext's own validate() + calculate_taxes_and_totals().
+# ──────────────────────────────────────────────────────────────────────────────
+# CORE TAX LOGIC
+# ──────────────────────────────────────────────────────────────────────────────
 
-	Determines taxability using TWO checks (dual-check):
-	  1. DB query: does the Item master / Item Group have rows in tabItem Tax?
-	  2. Invoice row: does item.item_tax_template have a value?
-	If EITHER is true, the item is taxable and we DO NOT touch it.
-	Only items that fail BOTH checks get forced to 0%.
+def _apply_item_tax_overrides(doc):
+	"""
+	Prepares item-level tax data BEFORE ERPNext's calculate runs.
+
+	Taxability is determined by dual-check:
+	  1. DB: does tabItem Tax have rows for this item / its Item Group?
+	  2. Row: does the invoice item row have item_tax_template set?
+	If EITHER is true → item is taxable.
+
+	Taxable items:
+	  → item_tax_rate = "" (cleared)
+	  → item_tax_template is KEPT
+	  → ERPNext's validate_item_tax_template() will populate item_tax_rate
+	    from the template, then calculate_taxes() will use that rate.
+
+	Non-taxable items:
+	  → item_tax_rate = {"account_head": 0} (forced zero)
+	  → item_tax_template = "" (cleared)
+	  → ERPNext's validate_item_tax_template() skips them (no template)
+	  → calculate_taxes() finds account in item_tax_rate → uses 0
 	"""
 	log = frappe.logger("pos_tax", allow_site=True)
 
@@ -121,45 +96,41 @@ def _enforce_item_level_tax(doc):
 	if not item_codes:
 		return
 
-	# DB-level check: which items have tax templates in their master data
+	# ── Determine which items are taxable ──────────────────────────────
 	items_with_tax_in_db = _get_items_with_tax_template(item_codes)
 
-	# Dual-check: an item is taxable if EITHER:
-	#   - DB query found a tax template for it, OR
-	#   - The invoice row has item_tax_template set (by ERPNext's set_missing_values)
-	def _is_item_taxable(item):
-		if item.item_code in items_with_tax_in_db:
+	def _is_taxable(item):
+		"""Dual-check: DB query OR invoice row field."""
+		if item.item_code and item.item_code in items_with_tax_in_db:
 			return True
 		if item.get("item_tax_template"):
 			return True
 		return False
 
 	has_any_vat_item = any(
-		_is_item_taxable(item)
+		_is_taxable(item)
 		for item in doc.get("items")
 		if item.item_code
 	)
 
-	# ── All-exempt: clear taxes ────────────────────────────────────────
+	# ── All-exempt case ────────────────────────────────────────────────
 	if not has_any_vat_item:
 		doc.taxes_and_charges = None
 		doc.set("taxes", [])
-		doc.total_taxes_and_charges = 0
-		doc.calculate_taxes_and_totals()
-		log.debug("All items tax-exempt — cleared taxes and recalculated")
+		log.debug("All items tax-exempt — cleared taxes")
 		return
 
-	# ── Ensure tax rows exist ──────────────────────────────────────────
+	# ── Ensure tax rows exist (required for GL entries) ────────────────
 	_ensure_tax_rows_exist(doc)
 
-	if not doc.get("taxes") or len(doc.get("taxes")) == 0:
-		log.debug("Could not populate tax rows — skipping enforcement")
+	if not doc.get("taxes"):
+		log.debug("Could not populate tax rows — skipping")
 		return
 
-	# ── Apply tax-inclusive flag ────────────────────────────────────────
+	# ── Set tax-inclusive flag ──────────────────────────────────────────
 	_apply_tax_inclusive_flag(doc)
 
-	# ── Build zero-rate map from actual tax rows ───────────────────────
+	# ── Build zero-rate map ────────────────────────────────────────────
 	tax_accounts = [t.account_head for t in doc.get("taxes") if t.account_head]
 	if not tax_accounts:
 		return
@@ -167,45 +138,41 @@ def _enforce_item_level_tax(doc):
 	zero_rate_map = {acct: 0 for acct in tax_accounts}
 	zero_rate_json = json.dumps(zero_rate_map)
 
-	# ── Apply per-item overrides ──────────────────────────────────────
-	# TAXABLE items: CLEAR item_tax_rate so ERPNext uses the global tax.rate
-	#   (if item_tax_rate contains ANY value, ERPNext uses it instead of global)
-	# NON-TAXABLE items: SET item_tax_rate = {"account": 0} to force zero
-	overridden_count = 0
-	preserved_count = 0
+	# ── Apply per-item overrides ───────────────────────────────────────
+	taxable_count = 0
+	exempt_count = 0
+
 	for item in doc.get("items"):
 		if not item.item_code:
 			continue
 
-		if _is_item_taxable(item):
-			# TAXABLE — clear any stale item_tax_rate overrides.
-			# This forces ERPNext's _get_tax_rate() to fall back to
-			# tax.rate (the global rate from doc.taxes), which is correct.
+		if _is_taxable(item):
+			# TAXABLE: clear item_tax_rate so ERPNext's
+			# validate_item_tax_template() will set it from the template.
+			# DO NOT touch item_tax_template — ERPNext needs it.
 			item.item_tax_rate = ""
-			preserved_count += 1
+			taxable_count += 1
 		else:
-			# NON-TAXABLE — force zero tax on all accounts
+			# NON-TAXABLE: force zero rate and clear template so
+			# validate_item_tax_template() won't overwrite our zero.
 			item.item_tax_rate = zero_rate_json
 			item.item_tax_template = ""
-			overridden_count += 1
-
-	# ── Recalculate with correct overrides ─────────────────────────────
-	doc.calculate_taxes_and_totals()
+			exempt_count += 1
 
 	log.debug(
-		f"Tax enforcement: {preserved_count} taxable (untouched), "
-		f"{overridden_count} non-taxable (forced 0%), "
-		f"total_taxes = {doc.total_taxes_and_charges}"
+		f"Tax overrides set: {taxable_count} taxable (cleared), "
+		f"{exempt_count} exempt (forced 0%). "
+		f"ERPNext will now calculate_taxes_and_totals()."
 	)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# HELPER FUNCTIONS
+# HELPERS
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _ensure_tax_rows_exist(doc):
 	"""
-	Ensures doc.taxes has at least one row when there are taxable items.
+	Ensures doc.taxes has at least one row. Required for GL entries.
 	IDEMPOTENT: if doc.taxes already has rows, does nothing.
 	"""
 	if doc.get("taxes") and len(doc.get("taxes")) > 0:
@@ -213,7 +180,6 @@ def _ensure_tax_rows_exist(doc):
 
 	log = frappe.logger("pos_tax", allow_site=True)
 
-	# Resolve template name
 	template_name = doc.taxes_and_charges
 	if not template_name and doc.pos_profile:
 		template_name = frappe.db.get_value(
@@ -221,13 +187,11 @@ def _ensure_tax_rows_exist(doc):
 		)
 		if template_name:
 			doc.taxes_and_charges = template_name
-			log.debug(f"Set taxes_and_charges from POS Profile: {template_name}")
 
 	if not template_name:
-		log.debug("No tax template found — cannot populate doc.taxes")
+		log.debug("No tax template found")
 		return
 
-	# Load template and create tax rows
 	try:
 		template_doc = frappe.get_cached_doc(
 			"Sales Taxes and Charges Template", template_name
@@ -237,7 +201,6 @@ def _ensure_tax_rows_exist(doc):
 		return
 
 	if not template_doc.taxes:
-		log.debug(f"Tax template '{template_name}' has no tax rows")
 		return
 
 	for tax_row in template_doc.taxes:
@@ -249,9 +212,7 @@ def _ensure_tax_rows_exist(doc):
 			"included_in_print_rate": getattr(tax_row, "included_in_print_rate", 0),
 		})
 
-	log.debug(
-		f"Injected {len(template_doc.taxes)} tax row(s) from '{template_name}'"
-	)
+	log.debug(f"Injected {len(template_doc.taxes)} tax row(s) from '{template_name}'")
 
 
 def _get_items_with_tax_template(item_codes):
@@ -261,14 +222,14 @@ def _get_items_with_tax_template(item_codes):
 	"""
 	items_with_tax = set()
 
-	# 1. Check Item-level tax templates
+	# 1. Item-level
 	tax_results = frappe.db.sql(
 		"SELECT DISTINCT parent FROM `tabItem Tax` WHERE parent IN %s AND parenttype = 'Item'",
 		(tuple(item_codes),),
 	)
 	items_with_tax.update(row[0] for row in tax_results)
 
-	# 2. Check Item Group-level tax templates
+	# 2. Item Group-level
 	item_details = frappe.get_all(
 		"Item",
 		filters={"name": ["in", item_codes]},
@@ -297,9 +258,7 @@ def _get_items_with_tax_template(item_codes):
 
 
 def _apply_tax_inclusive_flag(doc):
-	"""
-	Set the included_in_print_rate flag on tax rows based on POS Settings.
-	"""
+	"""Set included_in_print_rate flag based on POS Settings."""
 	if not doc.pos_profile or not doc.get("taxes"):
 		return
 
@@ -326,10 +285,7 @@ def _apply_tax_inclusive_flag(doc):
 # ──────────────────────────────────────────────────────────────────────────────
 
 def auto_assign_loyalty_program_on_invoice(doc):
-	"""
-	Auto-assign loyalty program to customer if loyalty is enabled in POS Settings
-	but customer doesn't have a loyalty program yet.
-	"""
+	"""Auto-assign loyalty program to customer if enabled in POS Settings."""
 	if not doc.is_pos or not doc.pos_profile or not doc.customer:
 		return
 
@@ -346,7 +302,6 @@ def auto_assign_loyalty_program_on_invoice(doc):
 
 	if not pos_settings:
 		return
-
 	if not cint(pos_settings.get("enable_loyalty_program")):
 		return
 
@@ -355,28 +310,18 @@ def auto_assign_loyalty_program_on_invoice(doc):
 		return
 
 	frappe.db.set_value(
-		"Customer",
-		doc.customer,
-		"loyalty_program",
-		loyalty_program,
-		update_modified=False
+		"Customer", doc.customer, "loyalty_program",
+		loyalty_program, update_modified=False
 	)
 
 
 def set_source_warehouse_from_pos_profile(doc):
-	"""
-	Set Source Warehouse from POS Profile warehouse.
-	"""
-	if not doc.pos_profile:
-		return
-
-	if doc.set_warehouse:
+	"""Set Source Warehouse from POS Profile warehouse."""
+	if not doc.pos_profile or doc.set_warehouse:
 		return
 
 	try:
-		warehouse = frappe.db.get_value(
-			"POS Profile", doc.pos_profile, "warehouse"
-		)
+		warehouse = frappe.db.get_value("POS Profile", doc.pos_profile, "warehouse")
 		if warehouse:
 			doc.set_warehouse = warehouse
 			doc.update_stock = 1
@@ -385,10 +330,7 @@ def set_source_warehouse_from_pos_profile(doc):
 
 
 def before_cancel(doc, method=None):
-	"""
-	Before Cancel hook for Sales Invoice.
-	Cancel any credit redemption journal entries.
-	"""
+	"""Cancel credit redemption journal entries."""
 	try:
 		from pos_itqan.api.credit_sales import cancel_credit_journal_entries
 		cancel_credit_journal_entries(doc.name)
