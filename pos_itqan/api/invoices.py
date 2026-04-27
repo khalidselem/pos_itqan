@@ -432,8 +432,12 @@ def _populate_item_tax_data(invoice_doc, pos_profile):
             return
 
         # ── Step 1: Look up tax templates from Item master ─────────────
-        # Query tabItem Tax for item-level templates, filtered by company
+        # Query tabItem Tax for item-level templates, filtered by company.
+        # NOTE: invoice_doc.company may be empty at this stage (before
+        # set_missing_values), so we get company from POS Profile.
         company = invoice_doc.get("company") or ""
+        if not company and pos_profile:
+            company = frappe.db.get_value("POS Profile", pos_profile, "company") or ""
         item_templates = {}
 
         if company:
